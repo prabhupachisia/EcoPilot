@@ -121,8 +121,6 @@ class BuildingState:
 
     optimization: OptimizationMetrics
 
-    # Replace everything below with the new methods
-
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
 
@@ -147,7 +145,9 @@ class BuildingState:
             ),
             simulation=SimulationInfo(
                 simulation_id=simulation["simulation_id"],
-                timestamp=datetime.fromisoformat(simulation["timestamp"]),
+                timestamp=datetime.fromisoformat(
+                    simulation["timestamp"]
+                ),
                 runtime_seconds=simulation["runtime_seconds"],
                 success=simulation["success"],
             ),

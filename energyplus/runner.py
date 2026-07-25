@@ -1,6 +1,9 @@
 from pathlib import Path
 import shutil
 import subprocess
+import time
+import uuid
+from datetime import datetime
 
 from config.settings import (
     ENERGYPLUS_EXE,
@@ -8,9 +11,11 @@ from config.settings import (
     SIMULATION_TIMEOUT,
 )
 
+from energyplus.models import SimulationResult
+
 
 class EnergyPlusRunner:
-    def __init__(self):
+    def __init__(self) -> None:
         self.energyplus_exe = Path(ENERGYPLUS_EXE)
         self.weather_file = Path(WEATHER_FILE)
 
@@ -19,7 +24,10 @@ class EnergyPlusRunner:
         idf_path: Path,
         output_dir: Path,
         clean: bool = True,
-    ) -> bool:
+    ) -> SimulationResult:
+        """
+        Execute an EnergyPlus simulation.
+        """
         idf_path = Path(idf_path)
         output_dir = Path(output_dir)
 
@@ -39,6 +47,13 @@ class EnergyPlusRunner:
             str(idf_path),
         ]
 
+        sql_file = output_dir / "eplusout.sql"
+
+        simulation_id = str(uuid.uuid4())
+        timestamp = datetime.now()
+
+        start = time.perf_counter()
+
         try:
             result = subprocess.run(
                 command,
@@ -47,21 +62,64 @@ class EnergyPlusRunner:
                 timeout=SIMULATION_TIMEOUT,
             )
 
-            if result.returncode != 0:
-                print(result.stderr)
-                return False
+            runtime = time.perf_counter() - start
 
-            return True
+            if result.returncode != 0:
+                return SimulationResult(
+                    simulation_id=simulation_id,
+                    timestamp=timestamp,
+                    runtime_seconds=runtime,
+                    success=False,
+                    idf_file=idf_path,
+                    output_directory=output_dir,
+                    sql_file=sql_file,
+                    error=result.stderr.strip()
+                    or "EnergyPlus simulation failed.",
+                )
+
+            return SimulationResult(
+                simulation_id=simulation_id,
+                timestamp=timestamp,
+                runtime_seconds=runtime,
+                success=True,
+                idf_file=idf_path,
+                output_directory=output_dir,
+                sql_file=sql_file,
+            )
 
         except subprocess.TimeoutExpired:
-            print("Simulation timed out.")
-            return False
+            runtime = time.perf_counter() - start
 
-        except Exception as e:
-            print(f"Simulation failed: {e}")
-            return False
+            return SimulationResult(
+                simulation_id=simulation_id,
+                timestamp=timestamp,
+                runtime_seconds=runtime,
+                success=False,
+                idf_file=idf_path,
+                output_directory=output_dir,
+                sql_file=sql_file,
+                error="Simulation timed out.",
+            )
 
-    def _validate(self, idf_path: Path):
+        except Exception as exc:
+            runtime = time.perf_counter() - start
+
+            return SimulationResult(
+                simulation_id=simulation_id,
+                timestamp=timestamp,
+                runtime_seconds=runtime,
+                success=False,
+                idf_file=idf_path,
+                output_directory=output_dir,
+                sql_file=sql_file,
+                error=str(exc),
+            )
+
+    def _validate(self, idf_path: Path) -> None:
+        """
+        Validate all required files before launching EnergyPlus.
+        """
+
         if not self.energyplus_exe.exists():
             raise FileNotFoundError(
                 f"EnergyPlus executable not found: {self.energyplus_exe}"
