@@ -1,32 +1,38 @@
-#Core
 numpy==2.3.2
 pandas==2.3.1
 
-#energy plus
+# EnergyPlus
 eppy==0.5.63
 
-#llm
+# LLM
 ollama==0.5.1
 
-#mcp
+# MCP
 mcp==1.12.3
 
-#backend
+# Backend
 fastapi==0.116.1
 uvicorn==0.35.0
 
-#dashboard
+# Dashboard
 streamlit==1.47.1
 plotly==6.2.0
 
-#http
-requests==2.32.4
+# Memory
+faiss-cpu==1.11.0.post1
 
-#utils
+# Knowledge Processing
+sentence-transformers==5.0.0
+pymupdf==1.26.3
+
+# Utilities
+requests==2.32.4
 python-dotenv==1.1.1
 pydantic==2.11.7
 rich==14.1.0
+loguru==0.7.3
 
-#devlopment
+# Development
 pytest==8.4.1
 black==25.1.0
+pytest-cov
