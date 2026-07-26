@@ -98,6 +98,16 @@ def register_building_tools(
         return dependencies.building.apply_actions(actions)
 
     @server.tool(
+        name="get_hvac_setpoints",
+        description="Return the building's current occupied cooling and heating setpoint temperatures (°C).",
+    )
+    def get_hvac_setpoints() -> dict[str, float]:
+        return {
+            "cooling_setpoint_temperature": dependencies.building.zone_cooling_setpoint_temperature(),
+            "heating_setpoint_temperature": dependencies.building.zone_heating_setpoint_temperature(),
+        }
+
+    @server.tool(
         name="create_snapshot",
         description="Create a snapshot of the current building.",
     )
