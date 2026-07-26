@@ -227,3 +227,36 @@ class BuildingStateExtractor:
             int(row["hour"]): self._joules_to_kwh(row["value"]) or 0.0
             for row in rows
         }
+
+    def extract_zone_variable(
+        self,
+        name: str,
+        aggregate: str = "AVG",
+    ) -> dict[str, float]:
+        """Return {zone_name: value} for a per-zone variable.
+
+        EnergyPlus keys per-zone variables by ReportDataDictionary.KeyValue
+        (the zone name) -- one dictionary row per zone rather than one
+        shared row like the whole-building meters extract_energy() etc.
+        pull from.
+        """
+
+        query = f"""
+        SELECT rdd.KeyValue AS zone, {aggregate}(rd.Value) AS value
+        FROM ReportData rd
+        JOIN ReportDataDictionary rdd
+            ON rd.ReportDataDictionaryIndex = rdd.ReportDataDictionaryIndex
+        WHERE rdd.Name = ?
+        AND rdd.KeyValue IS NOT NULL
+        GROUP BY rdd.KeyValue
+        """
+
+        rows = self.reader.fetchall(query, (name,))
+
+        return {row["zone"]: row["value"] for row in rows}
+
+    def extract_zone_temperatures(self) -> dict[str, float]:
+        """Return {zone_name: average air temperature} -- feeds the dashboard's
+        per-zone heatmap."""
+
+        return self.extract_zone_variable("Zone Mean Air Temperature")

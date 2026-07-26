@@ -43,9 +43,31 @@ def test_run_simulation_calls_runner() -> None:
         idf_path=Path("building.idf"),
         output_dir=Path("output"),
         clean=True,
+        weather_file=None,
     )
 
     assert result == expected
+
+
+def test_run_simulation_passes_through_an_explicit_weather_file() -> None:
+    runner = Mock()
+    runner.run.return_value = make_result()
+
+    dependencies = DependencyProvider(energyplus_runner=runner)
+
+    run_simulation(
+        dependencies=dependencies,
+        idf_path="building.idf",
+        output_directory="output",
+        weather_file="custom.epw",
+    )
+
+    runner.run.assert_called_once_with(
+        idf_path=Path("building.idf"),
+        output_dir=Path("output"),
+        clean=True,
+        weather_file=Path("custom.epw"),
+    )
 
 
 def test_run_simulation_returns_failure_result() -> None:

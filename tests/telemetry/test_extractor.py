@@ -102,3 +102,16 @@ def test_extract_hourly_energy(extractor):
 
 def test_extract_hourly_energy_returns_empty_for_unknown_variable(extractor):
     assert extractor.extract_hourly_energy(name="Does:NotExist") == {}
+
+
+def test_extract_zone_temperatures(extractor):
+    zone_temperatures = extractor.extract_zone_temperatures()
+
+    assert isinstance(zone_temperatures, dict)
+    assert len(zone_temperatures) > 0
+    assert all(isinstance(zone, str) for zone in zone_temperatures)
+    assert all(-20 <= value <= 60 for value in zone_temperatures.values())
+
+
+def test_extract_zone_variable_returns_empty_for_unknown_variable(extractor):
+    assert extractor.extract_zone_variable("Does Not Exist") == {}

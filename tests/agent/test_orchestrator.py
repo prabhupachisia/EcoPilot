@@ -173,6 +173,31 @@ def test_run_optimization_loop_runs_to_max_cycles_when_never_satisfied(tmp_path:
     assert memory.count == max_cycles
 
 
+def test_run_optimization_loop_calls_on_cycle_once_per_cycle(tmp_path: Path) -> None:
+    max_cycles = 3
+    evaluation = make_evaluation(passed=False, overall_score=80.0)
+    tools = make_tools(evaluation)
+    memory = ExperienceStore(path=tmp_path / "experiences.json")
+
+    graph = build_cycle_graph(
+        llm=make_llm_with_proposals(max_cycles),
+        tools=tools,
+        memory=memory,
+        safety=SafetySupervisor(),
+    )
+
+    seen_cycles = []
+    run_optimization_loop(
+        graph,
+        baseline_state=make_building_state(),
+        metadata=make_metadata(),
+        max_cycles=max_cycles,
+        on_cycle=lambda cycle, result: seen_cycles.append((cycle, result["cycle"])),
+    )
+
+    assert seen_cycles == [(1, 1), (2, 2), (3, 3)]
+
+
 def test_run_optimization_loop_threads_previous_score_between_cycles(tmp_path: Path) -> None:
     max_cycles = 2
     evaluation = make_evaluation(passed=False, overall_score=80.0)

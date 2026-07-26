@@ -36,6 +36,17 @@ _VARIABLES: list[tuple[int, str, str, list[tuple[int | None, float]]]] = [
     ),
 ]
 
+# Per-zone variables (real EnergyPlus keys these by KeyValue = zone name;
+# one ReportDataDictionary row per zone rather than one shared row).
+_ZONE_VARIABLES: list[tuple[int, str, str, str, list[float]]] = [
+    (13, "Zone Mean Air Temperature", "SPACE1-1", "Zone Timestep", [22.5, 23.0, 23.8]),
+    (14, "Zone Mean Air Temperature", "SPACE2-1", "Zone Timestep", [21.8, 22.4, 23.1]),
+    (15, "Zone Mean Air Temperature", "SPACE3-1", "Zone Timestep", [24.2, 24.8, 25.0]),
+    (16, "Zone Mean Air Temperature", "SPACE4-1", "Zone Timestep", [23.0, 23.5, 23.9]),
+    (17, "Zone Mean Air Temperature", "SPACE5-1", "Zone Timestep", [22.0, 22.6, 22.9]),
+    (18, "Zone Mean Air Temperature", "PLENUM-1", "Zone Timestep", [25.5, 26.0, 26.2]),
+]
+
 
 def build_synthetic_eplus_sql(path: Path) -> Path:
     """Create a minimal EnergyPlus-shaped SQLite database at ``path``.
@@ -80,7 +91,8 @@ def build_synthetic_eplus_sql(path: Path) -> Path:
             CREATE TABLE ReportDataDictionary (
                 ReportDataDictionaryIndex INTEGER PRIMARY KEY,
                 Name TEXT,
-                ReportingFrequency TEXT
+                ReportingFrequency TEXT,
+                KeyValue TEXT
             )
             """
         )
@@ -104,8 +116,8 @@ def build_synthetic_eplus_sql(path: Path) -> Path:
 
         for dictionary_index, name, frequency, samples in _VARIABLES:
             cursor.execute(
-                "INSERT INTO ReportDataDictionary VALUES (?, ?, ?)",
-                (dictionary_index, name, frequency),
+                "INSERT INTO ReportDataDictionary VALUES (?, ?, ?, ?)",
+                (dictionary_index, name, frequency, None),
             )
 
             for hour, value in samples:
@@ -123,6 +135,19 @@ def build_synthetic_eplus_sql(path: Path) -> Path:
                     "INSERT INTO ReportData (TimeIndex, ReportDataDictionaryIndex, Value) "
                     "VALUES (?, ?, ?)",
                     (row_time_index, dictionary_index, value),
+                )
+
+        for dictionary_index, name, key_value, frequency, samples in _ZONE_VARIABLES:
+            cursor.execute(
+                "INSERT INTO ReportDataDictionary VALUES (?, ?, ?, ?)",
+                (dictionary_index, name, frequency, key_value),
+            )
+
+            for value in samples:
+                cursor.execute(
+                    "INSERT INTO ReportData (TimeIndex, ReportDataDictionaryIndex, Value) "
+                    "VALUES (?, ?, ?)",
+                    (None, dictionary_index, value),
                 )
 
         connection.commit()

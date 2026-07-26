@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -221,12 +222,15 @@ def run_optimization_loop(
     baseline_state: BuildingState,
     metadata: BuildingMetadata,
     max_cycles: int = MAX_OPTIMIZATION_CYCLES,
+    on_cycle: Callable[[int, OptimizationState], None] | None = None,
 ) -> list[OptimizationState]:
     """Run the per-cycle graph repeatedly until satisfied or max_cycles.
 
     Each iteration threads the prior cycle's resulting state and evaluation
     score into the next one's input, and stops early on the first cycle
-    whose evaluation passes.
+    whose evaluation passes. If given, on_cycle(cycle, result) fires right
+    after each cycle completes -- lets a caller (the dashboard) show live
+    progress without re-implementing this loop itself.
     """
 
     history: list[OptimizationState] = []
@@ -250,6 +254,9 @@ def run_optimization_loop(
 
         current_state = result["current_state"]
         previous_score = result["evaluation"].score.overall_score
+
+        if on_cycle is not None:
+            on_cycle(cycle, result)
 
         if result.get("satisfied"):
             break

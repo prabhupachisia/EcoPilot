@@ -34,6 +34,35 @@ def test_invalid_idf_raises() -> None:
         )
 
 
+def test_validate_falls_back_to_default_weather_file_when_none_given(tmp_path: Path) -> None:
+    runner = EnergyPlusRunner()
+    runner.energyplus_exe = tmp_path / "energyplus.exe"
+    runner.energyplus_exe.touch()
+    runner.weather_file = tmp_path / "does_not_exist.epw"
+
+    idf_path = tmp_path / "building.idf"
+    idf_path.touch()
+
+    with pytest.raises(FileNotFoundError, match="does_not_exist.epw"):
+        runner._validate(idf_path, weather_file=None)
+
+
+def test_validate_checks_the_overridden_weather_file_instead_of_the_default(tmp_path: Path) -> None:
+    runner = EnergyPlusRunner()
+    runner.energyplus_exe = tmp_path / "energyplus.exe"
+    runner.energyplus_exe.touch()
+    runner.weather_file = tmp_path / "default.epw"
+    runner.weather_file.touch()
+
+    idf_path = tmp_path / "building.idf"
+    idf_path.touch()
+
+    override = tmp_path / "custom.epw"
+
+    with pytest.raises(FileNotFoundError, match="custom.epw"):
+        runner._validate(idf_path, weather_file=override)
+
+
 @requires_energyplus
 def test_energyplus_simulation() -> None:
     runner = EnergyPlusRunner()

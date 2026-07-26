@@ -24,14 +24,20 @@ class EnergyPlusRunner:
         idf_path: Path,
         output_dir: Path,
         clean: bool = True,
+        weather_file: Path | None = None,
     ) -> SimulationResult:
         """
         Execute an EnergyPlus simulation.
+
+        weather_file overrides the runner's default (config.settings.WEATHER_FILE)
+        for this one run -- lets a caller simulate against an uploaded .epw
+        without needing a separate EnergyPlusRunner instance.
         """
         idf_path = Path(idf_path)
         output_dir = Path(output_dir)
+        weather_file = Path(weather_file) if weather_file is not None else self.weather_file
 
-        self._validate(idf_path)
+        self._validate(idf_path, weather_file)
 
         if clean and output_dir.exists():
             shutil.rmtree(output_dir)
@@ -41,7 +47,7 @@ class EnergyPlusRunner:
         command = [
             str(self.energyplus_exe),
             "-w",
-            str(self.weather_file),
+            str(weather_file),
             "-d",
             str(output_dir),
             str(idf_path),
@@ -115,7 +121,7 @@ class EnergyPlusRunner:
                 error=str(exc),
             )
 
-    def _validate(self, idf_path: Path) -> None:
+    def _validate(self, idf_path: Path, weather_file: Path | None = None) -> None:
         """
         Validate all required files before launching EnergyPlus.
         """
@@ -125,9 +131,11 @@ class EnergyPlusRunner:
                 f"EnergyPlus executable not found: {self.energyplus_exe}"
             )
 
-        if not self.weather_file.exists():
+        weather_file = weather_file if weather_file is not None else self.weather_file
+
+        if not weather_file.exists():
             raise FileNotFoundError(
-                f"Weather file not found: {self.weather_file}"
+                f"Weather file not found: {weather_file}"
             )
 
         if not idf_path.exists():

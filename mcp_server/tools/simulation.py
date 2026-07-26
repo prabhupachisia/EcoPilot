@@ -11,6 +11,7 @@ def run_simulation(
     idf_path: str | Path,
     output_directory: str | Path,
     clean: bool = True,
+    weather_file: str | Path | None = None,
 ) -> SimulationResult:
     """
     Execute an EnergyPlus simulation.
@@ -19,6 +20,7 @@ def run_simulation(
         idf_path=Path(idf_path),
         output_dir=Path(output_directory),
         clean=clean,
+        weather_file=Path(weather_file) if weather_file is not None else None,
     )
 
 
@@ -33,10 +35,12 @@ def register_simulation_tools(
         idf_path: str,
         output_directory: str,
         clean: bool = True,
+        weather_file: str | None = None,
     ) -> SimulationResult:
         return run_simulation(
             dependencies=dependencies,
             idf_path=idf_path,
             output_directory=output_directory,
             clean=clean,
+            weather_file=weather_file,
         )

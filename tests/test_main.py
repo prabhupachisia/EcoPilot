@@ -1,12 +1,13 @@
 import json
 from pathlib import Path
 
+import agent.run_logs as run_logs
 import main
 
 
 def test_dry_run_completes_and_writes_logs_and_report(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(main, "LOGS_DIR", tmp_path / "logs")
+    monkeypatch.setattr(run_logs, "LOGS_DIR", tmp_path / "logs")
     monkeypatch.setattr(main, "REPORTS_DIR", tmp_path / "reports")
 
     exit_code = main.main(["--dry-run", "--cycles", "2"])
@@ -32,7 +33,7 @@ def test_dry_run_completes_and_writes_logs_and_report(tmp_path: Path, monkeypatc
 
 def test_dry_run_stops_early_once_satisfied(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(main, "LOGS_DIR", tmp_path / "logs")
+    monkeypatch.setattr(run_logs, "LOGS_DIR", tmp_path / "logs")
     monkeypatch.setattr(main, "REPORTS_DIR", tmp_path / "reports")
 
     main.main(["--dry-run", "--cycles", "10"])
