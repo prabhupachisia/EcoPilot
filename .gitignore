@@ -36,8 +36,9 @@ energyplus/models/*.idf
 # Generated Reports
 reports/
 
-# FAISS Memory
+# FAISS Memory / experience store (runtime state, not source)
 memory/faiss_index/
+memory/*.json
 
 # Streamlit
 .streamlit/secrets.toml

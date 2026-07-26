@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastmcp import FastMCP
@@ -96,6 +97,20 @@ def register_building_tools(
             raise ValueError("At least one of cooling_c/heating_c is required.")
 
         return dependencies.building.apply_actions(actions)
+
+    @server.tool(
+        name="save_building",
+        description=(
+            "Save the current in-memory building model to an IDF file, "
+            "returning the saved path. Used to persist each optimization "
+            "cycle's modified building alongside the baseline, per the "
+            "hackathon's 'modified versions generated during runtime "
+            "evaluation' deliverable."
+        ),
+    )
+    def save_building(path: str | None = None) -> str:
+        dependencies.building.save(Path(path) if path is not None else None)
+        return str(dependencies.building.idf_path)
 
     @server.tool(
         name="get_hvac_setpoints",

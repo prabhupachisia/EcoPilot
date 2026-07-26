@@ -16,7 +16,7 @@ class ToolExecutor(Protocol):
     EnergyPlus/Ollama involved.
     """
 
-    def call(self, name: str, **kwargs: Any) -> Any: ...
+    def call(self, tool_name: str, **kwargs: Any) -> Any: ...
 
 
 class FastMCPToolExecutor:
@@ -32,15 +32,15 @@ class FastMCPToolExecutor:
     def __init__(self, server: FastMCP) -> None:
         self._server = server
 
-    def call(self, name: str, **kwargs: Any) -> Any:
-        return asyncio.run(self._call_async(name, kwargs))
+    def call(self, tool_name: str, **kwargs: Any) -> Any:
+        return asyncio.run(self._call_async(tool_name, kwargs))
 
-    async def _call_async(self, name: str, arguments: dict[str, Any]) -> Any:
+    async def _call_async(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         async with Client(self._server) as client:
             try:
-                result = await client.call_tool(name, arguments)
+                result = await client.call_tool(tool_name, arguments)
             except ToolError as error:
-                raise RuntimeError(f"MCP tool '{name}' failed: {error}") from error
+                raise RuntimeError(f"MCP tool '{tool_name}' failed: {error}") from error
 
             return result.data
 
@@ -61,15 +61,15 @@ class FakeToolExecutor:
     def queue(self, name: str, result: Any) -> None:
         self._responses[name] = result
 
-    def call(self, name: str, **kwargs: Any) -> Any:
-        self.calls.append((name, kwargs))
+    def call(self, tool_name: str, **kwargs: Any) -> Any:
+        self.calls.append((tool_name, kwargs))
 
-        if name not in self._responses:
+        if tool_name not in self._responses:
             raise AssertionError(
-                f"FakeToolExecutor has no scripted response for '{name}'."
+                f"FakeToolExecutor has no scripted response for '{tool_name}'."
             )
 
-        result = self._responses[name]
+        result = self._responses[tool_name]
 
         if callable(result):
             return result(**kwargs)

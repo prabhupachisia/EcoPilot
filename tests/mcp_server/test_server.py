@@ -18,6 +18,7 @@ def test_server_registers_the_expected_tools() -> None:
         "apply_building_action",
         "apply_building_actions",
         "set_hvac_setpoints",
+        "save_building",
         "get_hvac_setpoints",
         "create_snapshot",
         "restore_snapshot",
