@@ -69,7 +69,9 @@ weather, occupancy shifts, "a malfunction", equipment behavior -- unless that sp
 explicitly present in the Planner's reasoning or the numbers you were given. If you don't have a \
 grounded reason for the gap, say so plainly instead of guessing (e.g. "the outcome was close to \
 predicted" or "the actual result missed the prediction by N points; no specific cause is available \
-from this cycle's data"). The numeric confidence score itself is computed deterministically \
+from this cycle's data"). Match your wording to the actual size of the numbers: a difference under \
+1 percentage point is "negligible" or "small", not "significant" or "substantial" -- never describe \
+a small gap in dramatic language. The numeric confidence score itself is computed deterministically \
 elsewhere and is not something you should restate or recompute -- focus only on the qualitative \
 explanation."""
 

@@ -61,6 +61,7 @@ class Reflection:
         state: BuildingState,
         carbon_intensity_at_decision: float,
         previous_score: float | None = None,
+        current_setpoints: dict[str, float] | None = None,
     ) -> ReflectionResult:
         actual_savings_percent = evaluation.energy.savings_percent
         confidence = _compute_confidence(predicted_savings_percent, actual_savings_percent)
@@ -87,12 +88,21 @@ class Reflection:
 
         outcome = "rollback" if should_rollback else ("success" if evaluation.passed else "neutral")
 
+        current_setpoints = current_setpoints or {}
+        cooling_setpoint = _extract_setpoint_value(proposal.actions, "cooling_setpoint_temperature")
+        if cooling_setpoint is None:
+            cooling_setpoint = current_setpoints.get("cooling_setpoint_temperature", 0.0)
+
+        heating_setpoint = _extract_setpoint_value(proposal.actions, "heating_setpoint_temperature")
+        if heating_setpoint is None:
+            heating_setpoint = current_setpoints.get("heating_setpoint_temperature", 0.0)
+
         experience = Experience(
             cycle=cycle,
             weather_outdoor_temp=state.weather.outdoor_temperature or 0.0,
             occupancy=state.occupancy.average_occupancy or 0.0,
-            cooling_setpoint=_extract_setpoint_value(proposal.actions, "cooling_setpoint_temperature") or 0.0,
-            heating_setpoint=_extract_setpoint_value(proposal.actions, "heating_setpoint_temperature") or 0.0,
+            cooling_setpoint=cooling_setpoint,
+            heating_setpoint=heating_setpoint,
             carbon_intensity=carbon_intensity_at_decision,
             energy_kwh=state.energy.total_energy_kwh or 0.0,
             savings_percent=actual_savings_percent,

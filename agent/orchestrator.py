@@ -48,6 +48,7 @@ class OptimizationState(TypedDict, total=False):
 
     proposal: PlannerProposal
     controller_result: ControllerResult
+    current_setpoints: dict[str, float]
 
     simulation_result: Any
     evaluation: EvaluationResult
@@ -112,7 +113,14 @@ def build_cycle_graph(
         return {"proposal": proposal}
 
     def control(state: OptimizationState) -> dict[str, Any]:
-        return {"controller_result": controller.apply(state["proposal"])}
+        current_setpoints = tools.call("get_hvac_setpoints")
+
+        return {
+            "controller_result": controller.apply(
+                state["proposal"], current_setpoints=current_setpoints
+            ),
+            "current_setpoints": current_setpoints,
+        }
 
     def run_simulation(state: OptimizationState) -> dict[str, Any]:
         cycle = state["cycle"]
@@ -172,6 +180,7 @@ def build_cycle_graph(
             state=state["current_state"],
             carbon_intensity_at_decision=_first_carbon_intensity(state["carbon_profile"]),
             previous_score=state.get("previous_score"),
+            current_setpoints=state.get("current_setpoints"),
         )
 
         if result.should_rollback:

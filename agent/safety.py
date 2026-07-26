@@ -108,8 +108,78 @@ class SafetySupervisor:
             reason="Within safe range.",
         )
 
-    def validate_batch(self, actions: list[BuildingAction]) -> list[SafetyDecision]:
-        return [self.validate(action) for action in actions]
+    def validate_batch(
+        self,
+        actions: list[BuildingAction],
+        current_setpoints: dict[str, float] | None = None,
+    ) -> list[SafetyDecision]:
+        decisions = [self.validate(action) for action in actions]
+
+        if current_setpoints:
+            decisions = self._enforce_deadband_widening(decisions, current_setpoints)
+
+        return decisions
+
+    def _enforce_deadband_widening(
+        self,
+        decisions: list[SafetyDecision],
+        current_setpoints: dict[str, float],
+    ) -> list[SafetyDecision]:
+        """Reject a batch that narrows the cooling/heating deadband.
+
+        The Planner's own system prompt calls widening the deadband (not
+        narrowing it) "the single most important rule" for cutting HVAC
+        energy - narrowing it makes the equipment run more, not less. A 3B
+        local model doesn't reliably follow that instruction on its own
+        (this is what let a live run's Planner narrow 23.9/21.1 to 23.6/21.3
+        and made energy use go up), so this is enforced deterministically
+        here instead of trusted to the prompt alone.
+        """
+
+        current_cooling = current_setpoints.get("cooling_setpoint_temperature")
+        current_heating = current_setpoints.get("heating_setpoint_temperature")
+
+        if current_cooling is None or current_heating is None:
+            return decisions
+
+        proposed_cooling = current_cooling
+        proposed_heating = current_heating
+
+        for decision in decisions:
+            if decision.verdict is SafetyVerdict.REJECTED:
+                continue
+
+            if decision.action.parameter == "cooling_setpoint_temperature":
+                proposed_cooling = decision.applied_value
+            elif decision.action.parameter == "heating_setpoint_temperature":
+                proposed_heating = decision.applied_value
+
+        current_gap = current_cooling - current_heating
+        proposed_gap = proposed_cooling - proposed_heating
+
+        if proposed_gap >= current_gap - 1e-9:
+            return decisions
+
+        reason = (
+            f"Would narrow the cooling/heating deadband from {current_gap:.1f}C to "
+            f"{proposed_gap:.1f}C, which increases HVAC energy use rather than "
+            "reducing it; rejected."
+        )
+
+        return [
+            SafetyDecision(
+                action=decision.action,
+                verdict=SafetyVerdict.REJECTED,
+                original_value=decision.original_value,
+                applied_value=None,
+                reason=reason,
+            )
+            if decision.verdict is not SafetyVerdict.REJECTED
+            and decision.action.parameter
+            in ("cooling_setpoint_temperature", "heating_setpoint_temperature")
+            else decision
+            for decision in decisions
+        ]
 
     def check_regression(
         self,

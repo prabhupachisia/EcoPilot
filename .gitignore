@@ -40,7 +40,7 @@ reports/
 
 # FAISS Memory / experience store (runtime state, not source)
 memory/faiss_index/
-memory/*.json
+memory/**/*.json
 
 # Streamlit
 .streamlit/secrets.toml

@@ -40,14 +40,18 @@ class Controller:
         self.tools = tools
         self.safety = safety
 
-    def apply(self, proposal: PlannerProposal) -> ControllerResult:
+    def apply(
+        self,
+        proposal: PlannerProposal,
+        current_setpoints: dict[str, float] | None = None,
+    ) -> ControllerResult:
         if not proposal.actions:
             return ControllerResult(
                 safety_decisions=[],
                 message="No actions proposed.",
             )
 
-        decisions = self.safety.validate_batch(proposal.actions)
+        decisions = self.safety.validate_batch(proposal.actions, current_setpoints=current_setpoints)
 
         applied_actions = [
             apply_safety_decision(decision.action, decision)

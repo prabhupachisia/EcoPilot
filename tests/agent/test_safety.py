@@ -117,3 +117,71 @@ def test_check_regression_accepts_explicit_threshold_override() -> None:
     supervisor = SafetySupervisor(regression_threshold=0.5)
 
     assert supervisor.check_regression(baseline_score=100.0, current_score=80.0, threshold=0.1) is True
+
+
+def test_validate_batch_rejects_a_proposal_that_narrows_the_deadband() -> None:
+    """Regression test: a live run's Planner (a small local model) proposed
+    lowering cooling from 23.9 to 23.6 and raising heating from 21.1 to 21.3
+    -- narrowing the deadband from 2.8C to 2.3C -- which increases HVAC
+    energy even though the Planner's own prompt says to widen it. Nothing
+    caught this before; it should now be rejected outright.
+    """
+
+    supervisor = SafetySupervisor()
+
+    decisions = supervisor.validate_batch(
+        [
+            make_action("cooling_setpoint_temperature", 23.6),
+            make_action("heating_setpoint_temperature", 21.3),
+        ],
+        current_setpoints={
+            "cooling_setpoint_temperature": 23.9,
+            "heating_setpoint_temperature": 21.1,
+        },
+    )
+
+    assert all(decision.verdict is SafetyVerdict.REJECTED for decision in decisions)
+
+
+def test_validate_batch_allows_a_proposal_that_widens_the_deadband() -> None:
+    supervisor = SafetySupervisor()
+
+    decisions = supervisor.validate_batch(
+        [
+            make_action("cooling_setpoint_temperature", 24.5),
+            make_action("heating_setpoint_temperature", 20.5),
+        ],
+        current_setpoints={
+            "cooling_setpoint_temperature": 23.9,
+            "heating_setpoint_temperature": 21.1,
+        },
+    )
+
+    assert all(decision.verdict is SafetyVerdict.ACCEPT for decision in decisions)
+
+
+def test_validate_batch_allows_a_single_setpoint_change_that_widens_the_gap() -> None:
+    supervisor = SafetySupervisor()
+
+    decisions = supervisor.validate_batch(
+        [make_action("cooling_setpoint_temperature", 24.5)],
+        current_setpoints={
+            "cooling_setpoint_temperature": 23.9,
+            "heating_setpoint_temperature": 21.1,
+        },
+    )
+
+    assert decisions[0].verdict is SafetyVerdict.ACCEPT
+
+
+def test_validate_batch_ignores_deadband_check_without_current_setpoints() -> None:
+    supervisor = SafetySupervisor()
+
+    decisions = supervisor.validate_batch(
+        [
+            make_action("cooling_setpoint_temperature", 23.6),
+            make_action("heating_setpoint_temperature", 21.3),
+        ]
+    )
+
+    assert all(decision.verdict is SafetyVerdict.ACCEPT for decision in decisions)

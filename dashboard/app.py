@@ -83,6 +83,24 @@ AGENT_AVATARS = {
     "Reflection": "🔄",
 }
 
+# One accent color per agent role, used for the small speaker badge on each
+# Agent Console message. Safety Supervisor overrides this per-message with
+# a verdict color instead (green/amber/red) since its severity matters more
+# than a fixed role color.
+AGENT_COLORS = {
+    "Planner": "#7c5cff",
+    "Safety Supervisor": COLOR_GOOD,
+    "Controller": "#64748b",
+    "Analyst": COLOR_BASELINE,
+    "Reflection": COLOR_OPTIMIZED,
+}
+
+SAFETY_VERDICT_STYLES = {
+    "accept": ("✅", COLOR_GOOD),
+    "clipped": ("✂️", COLOR_WARNING),
+    "rejected": ("🚫", COLOR_CRITICAL),
+}
+
 st.set_page_config(page_title="EcoPilot", page_icon="🌱", layout="wide")
 
 st.markdown(
@@ -90,6 +108,22 @@ st.markdown(
     <style>
     div.block-container { padding-top: 2rem; }
     section[data-testid="stSidebar"] h1 { margin-bottom: 0; }
+
+    /* Agent Console message cards */
+    div[data-testid="stChatMessage"] {
+        border-radius: 14px;
+        padding: 0.6rem 0.9rem;
+        margin-bottom: 0.5rem;
+        background: rgba(127, 127, 127, 0.06);
+        border: 1px solid rgba(127, 127, 127, 0.14);
+    }
+    div[data-testid="stChatMessageContent"] p {
+        margin-bottom: 0.35rem;
+        line-height: 1.5;
+    }
+    div[data-testid="stChatMessageContent"] p:last-child {
+        margin-bottom: 0;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -434,19 +468,70 @@ def render_simulation_runner() -> None:
 # ----------------------------------------------------------------------
 
 
-def _agent_message(container, speaker: str, text: str) -> None:
+def _agent_message(container, speaker: str, text: str, accent: str | None = None) -> None:
+    color = accent or AGENT_COLORS.get(speaker, "#64748b")
+    badge = (
+        f'<span style="display:inline-block;padding:1px 10px;border-radius:999px;'
+        f'background:{color}26;color:{color};font-weight:700;font-size:0.75rem;'
+        f'letter-spacing:0.03em;">{speaker.upper()}</span>'
+    )
+
     with container:
         st.chat_message(speaker, avatar=AGENT_AVATARS.get(speaker, "🤖")).markdown(
-            f"**{speaker}**\n\n{text}"
+            f"{badge}\n\n{text}", unsafe_allow_html=True
         )
 
 
-def _render_chat_transcript(container, transcript: list[tuple[str, str]]) -> None:
-    for speaker, text in transcript:
+def _render_cycle_header(container, cycle: int) -> None:
+    container.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:0.75rem;margin:1.4rem 0 0.85rem;">
+            <div style="flex:1;height:1px;background:rgba(127,127,127,0.3);"></div>
+            <div style="font-weight:700;font-size:0.78rem;letter-spacing:0.08em;
+                        color:rgba(127,127,127,0.9);padding:3px 16px;
+                        border:1px solid rgba(127,127,127,0.35);border-radius:999px;
+                        white-space:nowrap;">
+                CYCLE {cycle}
+            </div>
+            <div style="flex:1;height:1px;background:rgba(127,127,127,0.3);"></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _safety_decisions_message(safety_decisions) -> tuple[str, str]:
+    """One combined Safety Supervisor message for a whole cycle's decisions.
+
+    Was previously one full chat bubble per decision (avatar + name
+    repeated for every setpoint), which read as noisy clutter for the
+    common 2-setpoint case. The message color escalates to the worst
+    verdict in the batch (green -> amber -> red) so a rejected proposal is
+    visible at a glance instead of requiring reading every line.
+    """
+
+    severity = {"accept": 0, "clipped": 1, "rejected": 2}
+    lines = []
+    worst_verdict = "accept"
+
+    for decision in safety_decisions:
+        emoji, _ = SAFETY_VERDICT_STYLES.get(decision.verdict.value, ("", COLOR_GOOD))
+        lines.append(f"{emoji} `{decision.action.parameter}` — {decision.reason}")
+
+        if severity.get(decision.verdict.value, 0) > severity[worst_verdict]:
+            worst_verdict = decision.verdict.value
+
+    accent = SAFETY_VERDICT_STYLES.get(worst_verdict, ("", COLOR_GOOD))[1]
+
+    return "\n\n".join(lines), accent
+
+
+def _render_chat_transcript(container, transcript: list[tuple[str, str, str | None]]) -> None:
+    for speaker, text, accent in transcript:
         if speaker == "_cycle_header":
-            container.markdown(f"**{text}**")
+            _render_cycle_header(container, text)
         else:
-            _agent_message(container, speaker, text)
+            _agent_message(container, speaker, text, accent=accent)
 
 
 def render_closed_loop_runner() -> None:
@@ -482,27 +567,22 @@ def render_closed_loop_runner() -> None:
         st.session_state["chat_transcript"] = []
         transcript = st.session_state["chat_transcript"]
 
-        def log(speaker: str, text: str) -> None:
-            transcript.append((speaker, text))
-            _agent_message(console, speaker, text)
+        def log(speaker: str, text: str, accent: str | None = None) -> None:
+            transcript.append((speaker, text, accent))
+            _agent_message(console, speaker, text, accent=accent)
 
         def on_cycle(cycle: int, result: dict) -> None:
-            header = f"— Cycle {cycle} —"
-            transcript.append(("_cycle_header", header))
-            console.markdown(f"**{header}**")
+            transcript.append(("_cycle_header", cycle, None))
+            _render_cycle_header(console, cycle)
 
             log("Planner", result["proposal"].rationale)
             if demo_pacing:
                 time.sleep(0.4)
 
-            for decision in result["controller_result"].safety_decisions:
-                verdict_emoji = {"accept": "✅", "clipped": "✂️", "rejected": "🚫"}.get(
-                    decision.verdict.value, ""
-                )
-                log(
-                    "Safety Supervisor",
-                    f"{verdict_emoji} `{decision.action.parameter}` — {decision.reason}",
-                )
+            safety_decisions = result["controller_result"].safety_decisions
+            if safety_decisions:
+                text, accent = _safety_decisions_message(safety_decisions)
+                log("Safety Supervisor", text, accent=accent)
             if demo_pacing:
                 time.sleep(0.3)
 
@@ -525,6 +605,7 @@ def render_closed_loop_runner() -> None:
                 log(
                     "Safety Supervisor",
                     "⚠️ This cycle regressed enough to trigger an automatic rollback.",
+                    accent=COLOR_CRITICAL,
                 )
             if demo_pacing:
                 time.sleep(0.3)
@@ -590,10 +671,25 @@ def render_closed_loop_runner() -> None:
         history = st.session_state["last_run_history"]
         st.subheader("Last run summary")
 
+        final_savings = history[-1]["evaluation"].energy.savings_percent
+        final_confidence = history[-1]["reflection"].confidence
+
         columns = st.columns(3)
         columns[0].metric("Cycles run", len(history))
-        columns[1].metric("Final energy savings", f"{history[-1]['evaluation'].energy.savings_percent:.1f}%")
-        columns[2].metric("Final confidence", f"{history[-1]['reflection'].confidence:.2f}")
+        columns[1].metric("Final energy savings", f"{final_savings:.1f}%")
+        columns[2].metric("Final confidence", f"{final_confidence:.2f}")
+
+        if final_savings < 0:
+            st.error(
+                f"⚠️ Energy use is {abs(final_savings):.1f}% **higher** than baseline, not "
+                "lower. Check the Safety Supervisor messages above for any rejected "
+                "setpoint changes -- a proposal that narrows the cooling/heating "
+                "deadband increases HVAC energy and should show as rejected there."
+            )
+        elif final_savings == 0:
+            st.info("No net energy change from baseline yet.")
+        else:
+            st.success(f"✅ Energy use is {final_savings:.1f}% lower than baseline.")
 
 
 # ----------------------------------------------------------------------

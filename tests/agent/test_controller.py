@@ -131,3 +131,28 @@ def test_apply_returns_early_when_all_actions_rejected() -> None:
     assert result.committed is False
     assert tools.calls == []
     assert result.safety_decisions[0].verdict.value == "rejected"
+
+
+def test_apply_rejects_actions_that_narrow_the_deadband() -> None:
+    tools = FakeToolExecutor()
+    controller = Controller(tools=tools, safety=SafetySupervisor())
+
+    proposal = PlannerProposal(
+        actions=[
+            make_action("cooling_setpoint_temperature", 23.6),
+            make_action("heating_setpoint_temperature", 21.3),
+        ],
+        rationale="narrow the deadband",
+    )
+
+    result = controller.apply(
+        proposal,
+        current_setpoints={
+            "cooling_setpoint_temperature": 23.9,
+            "heating_setpoint_temperature": 21.1,
+        },
+    )
+
+    assert result.committed is False
+    assert tools.calls == []
+    assert all(decision.verdict.value == "rejected" for decision in result.safety_decisions)
