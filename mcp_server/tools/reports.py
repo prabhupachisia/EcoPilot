@@ -5,7 +5,7 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from evaluation import EvaluationRecommendation
+from mcp_server.tools.evaluation import EvaluationRecommendation
 
 from fastmcp import FastMCP
 
