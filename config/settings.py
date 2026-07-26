@@ -19,8 +19,8 @@ WEATHER_FILE = PROJECT_ROOT / "energyplus" / "weather" / "weather.epw"
 MODELS_DIR = PROJECT_ROOT / "energyplus" / "models"
 OUTPUT_DIR = PROJECT_ROOT / "energyplus" / "outputs"
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 
 MAX_OPTIMIZATION_CYCLES = int(os.getenv("MAX_OPTIMIZATION_CYCLES", 10))
 SIMULATION_TIMEOUT = int(os.getenv("SIMULATION_TIMEOUT", 600))
@@ -35,3 +35,8 @@ KNOWLEDGE_PATH = PROJECT_ROOT / os.getenv("KNOWLEDGE_PATH", "knowledge/processed
 
 REPORTS_DIR = PROJECT_ROOT / "reports"
 MEMORY_DIR = PROJECT_ROOT / "memory"
+
+EXPERIENCE_MEMORY_PATH = MEMORY_DIR / os.getenv("EXPERIENCE_MEMORY_FILE", "experiences.json")
+CARBON_INTENSITY_PROFILE_PATH = PROJECT_ROOT / os.getenv(
+    "CARBON_INTENSITY_PROFILE_PATH", "config/carbon_intensity.json"
+)

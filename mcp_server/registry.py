@@ -2,6 +2,7 @@ from fastmcp import FastMCP
 
 from mcp_server.dependencies import DependencyProvider
 from mcp_server.tools.building import register_building_tools
+from mcp_server.tools.carbon import register_carbon_tools
 from mcp_server.tools.evaluation import register_evaluation_tools
 from mcp_server.tools.knowledge_base import register_knowledge_tools
 from mcp_server.tools.memory import register_memory_tools
@@ -25,3 +26,4 @@ def register_tools(
     register_memory_tools(server, dependencies)
     register_knowledge_tools(server, dependencies)
     register_report_tools(server, dependencies)
+    register_carbon_tools(server, dependencies)

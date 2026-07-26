@@ -1,6 +1,8 @@
+from agent.memory import ExperienceStore
 from config.settings import BASELINE_IDF, IDD_PATH, WEATHER_FILE
 from energyplus.runner import EnergyPlusRunner
 from mcp_server.tools.building.manager import BuildingManager
+from mcp_server.tools.carbon import CarbonIntensityProfile
 from mcp_server.tools.knowledge_base import KnowledgeBase
 from telemetry.parser import TelemetryParser
 from session import SimulationSessionManager
@@ -9,12 +11,14 @@ from session import SimulationSessionManager
 class DependencyProvider:
     """Constructs and shares the runtime dependencies used by MCP tools.
 
-    ``building`` and ``knowledge_base`` are built lazily on first access
-    rather than eagerly in ``__init__``: constructing a ``BuildingManager``
-    needs a real IDD file and constructing a ``KnowledgeBase`` triggers a
-    network call to download its embedding model, neither of which should
-    happen just because a ``DependencyProvider`` was instantiated (e.g. in
-    a test that only cares about ``energyplus_runner``).
+    ``building``, ``knowledge_base``, ``experience_memory``, and
+    ``carbon_profile`` are all built lazily on first access rather than
+    eagerly in ``__init__``: constructing a ``BuildingManager`` needs a
+    real IDD file, constructing a ``KnowledgeBase`` triggers a network call
+    to download its embedding model, and the other two touch disk -- none
+    of which should happen just because a ``DependencyProvider`` was
+    instantiated (e.g. in a test that only cares about
+    ``energyplus_runner``).
     """
 
     def __init__(
@@ -24,12 +28,16 @@ class DependencyProvider:
         session_manager: SimulationSessionManager | None = None,
         building: BuildingManager | None = None,
         knowledge_base: KnowledgeBase | None = None,
+        experience_memory: ExperienceStore | None = None,
+        carbon_profile: CarbonIntensityProfile | None = None,
     ) -> None:
         self._energyplus_runner = energyplus_runner or EnergyPlusRunner()
         self._telemetry_parser = telemetry_parser or TelemetryParser()
         self._session_manager = session_manager or SimulationSessionManager()
         self._building = building
         self._knowledge_base = knowledge_base
+        self._experience_memory = experience_memory
+        self._carbon_profile = carbon_profile
 
     @property
     def energyplus_runner(self) -> EnergyPlusRunner:
@@ -58,3 +66,15 @@ class DependencyProvider:
         if self._knowledge_base is None:
             self._knowledge_base = KnowledgeBase()
         return self._knowledge_base
+
+    @property
+    def experience_memory(self) -> ExperienceStore:
+        if self._experience_memory is None:
+            self._experience_memory = ExperienceStore()
+        return self._experience_memory
+
+    @property
+    def carbon_profile(self) -> CarbonIntensityProfile:
+        if self._carbon_profile is None:
+            self._carbon_profile = CarbonIntensityProfile()
+        return self._carbon_profile
