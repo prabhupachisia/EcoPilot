@@ -54,20 +54,52 @@ text to the model.
 
 ```bash
 pip install -r requirements.txt
+```
 
+There are **two separate ways to run EcoPilot** — pick based on whether you
+want a terminal-only run or the visual dashboard. Both drive the exact same
+`agent/orchestrator.py` closed loop underneath; neither is a prerequisite
+for the other.
+
+### Option A — CLI (`python main.py`), terminal only, no GUI
+
+This prints a summary table to the terminal and writes logs/reports to
+disk. It never opens a browser or any UI.
+
+```bash
 # Code-only smoke test — no EnergyPlus/Ollama required:
 python main.py --dry-run --cycles 3
 
 # Live run (needs EnergyPlus installed, and Ollama running with qwen2.5:3b pulled):
 python main.py --cycles 10
+```
 
-# Dashboard (reads whatever the last run wrote to logs/ and reports/):
+### Option B — GUI (`streamlit run dashboard/app.py`), the full visual system
+
+This is the one command you need for the whole system with a UI — it opens
+a local web page (default `http://localhost:8501`) with five pages
+(Overview, Setup, Simulation Runner, Closed-Loop Runner, Outputs &
+Decisions).
+
+```bash
 streamlit run dashboard/app.py
 ```
 
-For a live run, copy `.env.example` to `.env` and fill in
-`ENERGYPLUS_HOME`/`ENERGYPLUS_EXE`. `--dry-run` needs none of that — it's
-the fastest way to see the whole loop work.
+Importantly, the **Closed-Loop Runner page runs the entire closed loop
+itself** (dry-run or live, your choice, from a toggle) — it is not just a
+viewer of files `python main.py` wrote. You never need to touch the CLI to
+get the full system working end to end; click "▶️ Start Closed Loop" and
+watch the Agent Console. If you *do* also run `python main.py` separately,
+the dashboard's other pages (Overview, Outputs & Decisions) will pick up
+that run's logs/reports too, since both entrypoints write to the same
+`logs/`/`reports/` files.
+
+### Live-mode prerequisites (either option)
+
+For a live (non-`--dry-run`) run, copy `.env.example` to `.env` and fill in
+`ENERGYPLUS_HOME`/`ENERGYPLUS_EXE`, and have Ollama running locally with
+`qwen2.5:3b` pulled. Dry-run mode needs none of that — it's the fastest way
+to see the whole loop work, in either the CLI or the dashboard.
 
 ## Tests
 
@@ -95,8 +127,11 @@ synthetic SQLite fixture standing in for a real `eplusout.sql`).
   subprocess wrapper.
 - `telemetry/` — pulls structured `BuildingState` data out of EnergyPlus's
   `eplusout.sql`.
-- `dashboard/` — the Streamlit dashboard (`app.py`) and its data-loading
-  layer (`data.py`), which just reads whatever's in `logs/`/`reports/`.
+- `dashboard/` — the Streamlit GUI (`app.py`): its Overview/Outputs &
+  Decisions pages read whatever's in `logs/`/`reports/` (via the
+  data-loading layer, `data.py`), but its Closed-Loop Runner page can drive
+  a full closed-loop run itself (dry-run or live) — a complete alternative
+  to `main.py`, not just a viewer.
 - `config/` — environment-driven settings (`settings.py`) and static
   constants (`constants.py` — safety ranges, log file names).
 - `main.py` — CLI entrypoint that wires all of the above together.

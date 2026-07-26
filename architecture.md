@@ -7,9 +7,20 @@ tool-calling, proposes HVAC setpoint changes, and those changes are fed back
 into EnergyPlus for the next simulation cycle — a genuine closed loop, not a
 one-shot recommendation.
 
+Two front-ends sit on top of the same closed-loop core and neither depends
+on the other: `main.py` is a terminal-only CLI (prints a summary table, no
+UI); `dashboard/app.py`'s Closed-Loop Runner page is a self-contained GUI
+that can drive the identical loop from a button click. Both call
+`build_cycle_graph()`/`run_optimization_loop()` directly.
+
 ```text
-                              main.py
-                                 │
+        main.py                          dashboard/app.py
+      (CLI, no UI --                 (Streamlit GUI -- the
+    prints a summary                Closed-Loop Runner page
+     table, no browser)             drives this loop itself)
+              │                                │
+              └────────────────┬───────────────┘
+                                │
                      build the closed-loop graph
                                  │
  ┌───────────────────────────────────────────────────────────────────┐
@@ -171,6 +182,12 @@ cycle count.
    `REGRESSION_ROLLBACK_THRESHOLD` triggers an automatic
    `restore_snapshot` — reusing the building layer's existing
    snapshot/transaction machinery rather than adding a new rollback path.
+   It also enforces the Planner's own optimization principle in code, not
+   just in the prompt: `_enforce_deadband_widening` rejects any proposal
+   that narrows the cooling/heating deadband (which increases HVAC energy
+   even though a smaller model can be talked into proposing it) by
+   comparing the batch's net effect against the current setpoints, not
+   just checking each action in isolation.
 3. **Explainable audit trail** — the building layer's `diff`/`ChangeRecord`
    history and snapshot list (already built, previously unwired to any UI)
    are exported per run and surfaced in the dashboard's Audit Trail page,
@@ -229,7 +246,7 @@ Two choices keep this from ever reaching the LLM or the agents directly:
 
 ## Testing strategy
 
-The entire suite (`pytest`, 179+ tests) is hermetic: no EnergyPlus install
+The entire suite (`pytest`, 220+ tests) is hermetic: no EnergyPlus install
 and no Ollama instance are required to get a green run.
 
 - **eppy needs a real, EnergyPlus-install-only IDD file** to parse any IDF
@@ -256,13 +273,32 @@ and no Ollama instance are required to get a green run.
 
 ## Running it
 
+Two independent front-ends, same closed-loop core underneath — see the
+diagram at the top of this document. Neither is a prerequisite for the
+other.
+
 ```bash
+# --- Option A: CLI, terminal only, no GUI/browser at all ---
+
 # Code-only smoke test -- no EnergyPlus/Ollama required:
 python main.py --dry-run --cycles 3
 
 # Live run (needs EnergyPlus + a running Ollama with qwen2.5:3b pulled):
 python main.py --cycles 10
 
-# Dashboard (reads whatever the last run wrote to logs/ and reports/):
+
+# --- Option B: GUI -- the full visual system, this is the only command ---
+# --- you need for the dashboard; it can run the closed loop itself.    ---
+
 streamlit run dashboard/app.py
 ```
+
+`streamlit run dashboard/app.py` opens a local web page with five pages
+(Overview, Setup, Simulation Runner, Closed-Loop Runner, Outputs &
+Decisions). Its Closed-Loop Runner page runs the entire loop itself —
+dry-run or live, toggled in the UI — so it is a complete alternative to
+`main.py`, not a viewer that depends on having run the CLI first. Running
+`python main.py` separately is only useful if you want the plain-terminal
+workflow, or want to seed `logs/`/`reports/` before opening the dashboard's
+read-only pages (Overview, Outputs & Decisions read whatever's on disk from
+either front-end).
