@@ -5,12 +5,11 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from mcp_server.tools.evaluation import EvaluationRecommendation
 
 from fastmcp import FastMCP
 
 from config.settings import REPORTS_DIR
-from mcp_server.tools.evaluation import EvaluationResult, summarize_evaluation
+from mcp_server.tools.evaluation import EvaluationResult, recommendation_value, summarize_evaluation
 
 if TYPE_CHECKING:
     from mcp_server.dependencies import DependencyProvider
@@ -18,11 +17,7 @@ if TYPE_CHECKING:
 
 def _evaluation_to_dict(result: EvaluationResult) -> dict[str, Any]:
     data = asdict(result)
-    data["recommendation"] = (
-    result.recommendation.value
-    if isinstance(result.recommendation, EvaluationRecommendation)
-    else result.recommendation
-)
+    data["recommendation"] = recommendation_value(result.recommendation)
     return data
 
 

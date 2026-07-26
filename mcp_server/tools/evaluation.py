@@ -319,6 +319,22 @@ def evaluate_snapshot(
     )
 
 
+def recommendation_value(recommendation: EvaluationRecommendation | str) -> str:
+    """Normalize a recommendation to its plain string value.
+
+    A tool result that's crossed the real MCP wire (as opposed to a
+    same-process call) doesn't always come back with its
+    EvaluationRecommendation field rehydrated as an Enum -- fastmcp's
+    client-side reconstruction of a returned dataclass can leave it as the
+    plain string it was serialized to. Safe to call on either.
+    """
+
+    if isinstance(recommendation, EvaluationRecommendation):
+        return recommendation.value
+
+    return str(recommendation)
+
+
 def summarize_evaluation(
     result: EvaluationResult,
 ) -> str:
@@ -327,7 +343,7 @@ def summarize_evaluation(
         f"Carbon reduction: {result.carbon.reduction_percent:.2f}% | "
         f"Peak demand reduction: {result.peak.reduction_percent:.2f}% | "
         f"Overall score: {result.score.overall_score:.2f}/100 | "
-        f"Recommendation: {result.recommendation.value.upper()}"
+        f"Recommendation: {recommendation_value(result.recommendation).upper()}"
     )
 
 
@@ -382,5 +398,6 @@ __all__ = [
     "generate_recommendation",
     "evaluate_snapshot",
     "summarize_evaluation",
+    "recommendation_value",
     "register_evaluation_tools"
 ]
