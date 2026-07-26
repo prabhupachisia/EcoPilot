@@ -181,3 +181,49 @@ class BuildingStateExtractor:
             ppd=None,
             discomfort_hours=None,
         )
+
+    def extract_peak_demand(self) -> float | None:
+        """Return the peak hourly electricity demand (kW).
+
+        Each hourly meter reading is the energy (J) consumed during that
+        hour, so converting it to kWh is numerically the average kW during
+        that hour -- the MAX across all hours is the peak demand.
+        """
+
+        peak_joules = self._get_metric(
+            "Electricity:Facility",
+            aggregate="MAX",
+            frequency="Hourly",
+        )
+
+        return self._joules_to_kwh(peak_joules)
+
+    def extract_hourly_energy(
+        self,
+        name: str = "Electricity:Facility",
+        frequency: str = "Hourly",
+    ) -> dict[int, float]:
+        """Return {hour_of_day: kWh} for an hourly-frequency meter/variable.
+
+        Used to weight energy use against an hourly grid carbon-intensity
+        profile (see ``mcp_server/tools/carbon.py``) instead of only a
+        single run-period total.
+        """
+
+        query = """
+        SELECT t.Hour AS hour, rd.Value AS value
+        FROM ReportData rd
+        JOIN ReportDataDictionary rdd
+            ON rd.ReportDataDictionaryIndex = rdd.ReportDataDictionaryIndex
+        JOIN Time t
+            ON rd.TimeIndex = t.TimeIndex
+        WHERE rdd.Name = ?
+        AND rdd.ReportingFrequency = ?
+        """
+
+        rows = self.reader.fetchall(query, (name, frequency))
+
+        return {
+            int(row["hour"]): self._joules_to_kwh(row["value"]) or 0.0
+            for row in rows
+        }

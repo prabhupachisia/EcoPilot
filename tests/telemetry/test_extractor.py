@@ -79,3 +79,26 @@ def test_extract_comfort(extractor):
 
     if comfort.average_indoor_temperature is not None:
         assert -20 <= comfort.average_indoor_temperature <= 60
+
+
+def test_extract_peak_demand(extractor):
+    peak = extractor.extract_peak_demand()
+
+    assert peak is not None
+    assert peak > 0
+
+
+def test_extract_hourly_energy(extractor):
+    hourly = extractor.extract_hourly_energy()
+
+    assert isinstance(hourly, dict)
+    assert len(hourly) > 0
+    assert all(isinstance(hour, int) for hour in hourly)
+    assert all(value >= 0 for value in hourly.values())
+
+    peak_hour_kwh = max(hourly.values())
+    assert peak_hour_kwh == pytest.approx(extractor.extract_peak_demand())
+
+
+def test_extract_hourly_energy_returns_empty_for_unknown_variable(extractor):
+    assert extractor.extract_hourly_energy(name="Does:NotExist") == {}

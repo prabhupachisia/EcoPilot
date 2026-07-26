@@ -33,6 +33,8 @@ class TelemetryParser:
                 hvac=extractor.extract_hvac(),
                 comfort=extractor.extract_comfort(),
                 carbon=CarbonMetrics(),
-                cost=CostMetrics(),
+                cost=CostMetrics(
+                    peak_demand_kw=extractor.extract_peak_demand(),
+                ),
                 optimization=OptimizationMetrics(),
             )

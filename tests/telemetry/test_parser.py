@@ -33,6 +33,10 @@ def test_parse_building_state(sql_database):
     assert state.comfort is not None
     assert state.occupancy is not None
 
+    assert state.cost is not None
+    assert state.cost.peak_demand_kw is not None
+    assert state.cost.peak_demand_kw > 0
+
 
 def test_parse_invalid_database():
     parser = TelemetryParser()
