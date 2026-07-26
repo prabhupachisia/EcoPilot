@@ -23,10 +23,10 @@ class BuildingHelpers:
             raise RuntimeError("No building model has been loaded.")
 
     def mark_dirty(self) -> None:
-        self.manager.is_dirty = True
+        self.manager._mark_dirty()
 
     def clear_dirty(self) -> None:
-        self.manager.is_dirty = False
+        self.manager._mark_clean()
 
     def invalidate_cache(self) -> None:
         self._zone_cache.clear()
@@ -105,12 +105,26 @@ class BuildingHelpers:
     def record_change(
         self,
         component,
-        target: str,
-        parameter: str,
-        previous_value: Any,
-        new_value: Any,
+        target: str | None = None,
+        parameter: str | None = None,
+        previous_value: Any = None,
+        new_value: Any = None,
         reason: str | None = None,
+        **legacy: Any,
     ) -> None:
+        """Record either the current or legacy mixin change argument shape."""
+        target = target or legacy.pop("object_name", None)
+        parameter = parameter or legacy.pop("field", None)
+        previous_value = legacy.pop("old_value", previous_value)
+        new_value = legacy.pop("new_value", new_value)
+        # Older HVAC/ventilation mixins provide this as extra context.  The
+        # public ChangeRecord does not expose an object type, so it is safely
+        # retained by the mixin call contract but not duplicated in the model.
+        legacy.pop("object_type", None)
+        if legacy:
+            raise TypeError(f"Unexpected change fields: {', '.join(legacy)}")
+        if target is None or parameter is None:
+            raise ValueError("Change records require a target and parameter.")
         change = ChangeRecord(
             timestamp=datetime.now(),
             component=component,

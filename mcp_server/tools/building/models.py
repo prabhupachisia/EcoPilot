@@ -10,10 +10,12 @@ from typing import Any
 # ENUMS
 
 class BuildingComponent(str, Enum):
+    ENVELOPE = "envelope"
     PEOPLE = "people"
     LIGHTING = "lighting"
     EQUIPMENT = "equipment"
     HVAC = "hvac"
+    VENTILATION = "ventilation"
     INFILTRATION = "infiltration"
     MATERIAL = "material"
     CONSTRUCTION = "construction"

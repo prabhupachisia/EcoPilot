@@ -96,11 +96,6 @@ class OptimizationMetrics:
 
     baseline_energy_kwh: float | None = None
     optimized_energy_kwh: float | None = None
-
-    energy_savings_percent: float | None = None
-    cost_savings_percent: float | None = None
-    carbon_reduction_percent: float | None = None
-
     objective_value: float | None = None
 
 

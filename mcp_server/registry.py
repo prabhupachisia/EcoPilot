@@ -3,7 +3,7 @@ from fastmcp import FastMCP
 from mcp_server.dependencies import DependencyProvider
 from mcp_server.tools.building import register_building_tools
 from mcp_server.tools.evaluation import register_evaluation_tools
-from mcp_server.tools.knowledge import register_knowledge_tools
+from mcp_server.tools.knowledge_base import register_knowledge_tools
 from mcp_server.tools.memory import register_memory_tools
 from mcp_server.tools.reports import register_report_tools
 from mcp_server.tools.simulation import register_simulation_tools
