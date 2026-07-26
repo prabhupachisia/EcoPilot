@@ -9,7 +9,7 @@ HEATING_SETPOINT_SAFE_RANGE = (18.0, 22.0)
 # that triggers an automatic snapshot/transaction rollback.
 REGRESSION_ROLLBACK_THRESHOLD = 0.10
 
-# Per-concern append-only log files (see plan.txt's "Logging" section).
+# One append-only log file per concern.
 SIMULATION_LOG_FILE = "simulation_log.json"
 DECISION_LOG_FILE = "decision_log.json"
 TOOL_LOG_FILE = "tool_log.json"

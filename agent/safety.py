@@ -28,17 +28,15 @@ class SafetyDecision:
 
 
 class SafetySupervisor:
-    """Deterministic guardrail over LLM-proposed ``BuildingAction``s.
+    """Guardrail over LLM-proposed BuildingActions. Plain Python, no model call.
 
-    This is plain Python, not an LLM call and not itself an MCP tool an LLM
-    could route around -- the Controller runs every proposed action
-    through ``validate``/``validate_batch`` before it is ever dispatched to
-    EnergyPlus, clipping out-of-range numeric setpoints and rejecting
-    anything it can't reason about safely. ``check_regression`` is the
-    separate, complementary guard: if a completed cycle's evaluation score
-    drops too far versus the prior cycle, the orchestrator auto-rolls-back
-    via the already-built snapshot/transaction machinery instead of
-    silently accepting a bad cycle.
+    The Controller runs every proposed action through validate()/
+    validate_batch() before anything reaches EnergyPlus - out-of-range
+    numeric setpoints get clipped, anything it can't reason about safely
+    gets rejected. check_regression() is the other half: if a cycle's
+    evaluation score drops too far from the previous one, the orchestrator
+    rolls back using the snapshot/transaction machinery instead of just
+    accepting a bad cycle and moving on.
     """
 
     def __init__(
@@ -119,12 +117,12 @@ class SafetySupervisor:
         current_score: float,
         threshold: float | None = None,
     ) -> bool:
-        """Return True if ``current_score`` regressed enough to roll back.
+        """True if current_score dropped enough from baseline_score to roll back.
 
-        Compares evaluation.score.overall_score between cycles (already a
-        weighted blend of energy/comfort/carbon/peak) rather than any
-        single metric, so one bad dimension doesn't need its own bespoke
-        threshold.
+        Compares the overall evaluation score (already a blend of energy,
+        comfort, carbon, peak) rather than picking apart individual
+        metrics - simpler, and one bad dimension doesn't need its own
+        threshold to tune.
         """
 
         threshold = self.regression_threshold if threshold is None else threshold

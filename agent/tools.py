@@ -8,25 +8,24 @@ from fastmcp.exceptions import ToolError
 
 
 class ToolExecutor(Protocol):
-    """The narrow interface agents use to invoke MCP tools.
+    """Narrow interface agents use to invoke MCP tools.
 
-    Agents never talk to ``fastmcp`` directly -- they go through this
-    interface, so control-flow (Planner/Controller/orchestrator) is
-    testable against a ``FakeToolExecutor`` with no MCP server or
-    EnergyPlus/Ollama involved.
+    Agents don't talk to fastmcp directly - they go through this instead,
+    so the control flow (Planner/Controller/orchestrator) can be tested
+    against a FakeToolExecutor with no MCP server, EnergyPlus, or Ollama
+    anywhere in sight.
     """
 
     def call(self, tool_name: str, **kwargs: Any) -> Any: ...
 
 
 class FastMCPToolExecutor:
-    """Calls tools on a real ``FastMCP`` server via fastmcp's in-memory transport.
+    """Calls tools on a real FastMCP server over fastmcp's in-memory transport.
 
-    Using the in-memory transport (``Client(server)`` against a live
-    ``FastMCP`` instance, no subprocess/socket) keeps this genuine MCP
-    tool-calling -- the same protocol a network-connected client would use
-    -- without the overhead of a separate process for a single-machine
-    hackathon PoC.
+    `Client(server)` talks to a live FastMCP instance directly, no
+    subprocess or socket involved, but it's still the real MCP call_tool
+    RPC under the hood - just skipping the network hop since everything's
+    running on one machine anyway.
     """
 
     def __init__(self, server: FastMCP) -> None:
@@ -46,12 +45,12 @@ class FastMCPToolExecutor:
 
 
 class FakeToolExecutor:
-    """Scripted ``ToolExecutor`` for tests.
+    """Scripted ToolExecutor for tests.
 
-    ``queue(name, result)`` registers what a call to ``name`` should
-    return; ``result`` may be a plain value or a callable taking the same
-    kwargs the tool was called with (for scripting responses that depend on
-    input). Every call is recorded in ``.calls`` for assertions.
+    queue(name, result) registers what calling `name` should return.
+    `result` can be a plain value, or a callable that takes the same
+    kwargs the tool was called with if the response needs to depend on
+    input. Every call gets recorded in `.calls` for assertions.
     """
 
     def __init__(self) -> None:

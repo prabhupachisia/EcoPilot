@@ -50,11 +50,10 @@ def register_memory_tools(
 ) -> None:
     """Register case-based experience-memory tools with the MCP server.
 
-    This is a thin wrapper over ``agent.memory.ExperienceStore`` -- the
-    numeric-feature FAISS case memory the Planner consults before deciding
-    (per the project's "Planner retrieves similar historical situations"
-    design). Distinct from ``mcp_server.tools.knowledge_base``, which is
-    document RAG over ASHRAE/EnergyPlus reference material, not experience.
+    Thin wrapper over agent.memory.ExperienceStore, the numeric-feature
+    FAISS case memory the Planner checks before deciding what to do next.
+    Not to be confused with knowledge_base.py, which is document RAG over
+    ASHRAE/EnergyPlus reference material rather than past experience.
     """
 
     @server.tool(

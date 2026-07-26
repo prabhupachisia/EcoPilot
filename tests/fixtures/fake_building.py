@@ -5,14 +5,13 @@ from typing import Any
 
 from mcp_server.tools.building.manager import BuildingManager
 
-# EnergyPlus (via eppy) does not ship its IDD with the Python package -- it
-# only exists inside a real EnergyPlus install. Since neither is available
-# in every test environment, ``BuildingManager`` tests build a lightweight
-# stand-in for eppy's ``IDF``/``EpBunch`` objects instead of loading a real
-# IDF through eppy. The manager and its mixins only ever touch
-# ``idf.idfobjects`` (a dict of lists) and use plain ``getattr``/``setattr``
-# on the returned objects -- both of which ``FakeEpBunch``/``FakeIDF``
-# reproduce faithfully, so the same mixin code under test runs unmodified.
+# eppy's IDD only ships inside a real EnergyPlus install, which isn't a
+# safe thing to assume every test box has. So instead of loading an actual
+# IDF through eppy, BuildingManager tests run against this lightweight
+# stand-in for IDF/EpBunch. The manager and its mixins only ever touch
+# idf.idfobjects (a dict of lists) and getattr/setattr on whatever comes
+# back, and FakeEpBunch/FakeIDF reproduce exactly that, so the real mixin
+# code runs against them unmodified.
 
 
 class FakeEpBunch:

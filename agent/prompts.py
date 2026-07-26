@@ -1,10 +1,10 @@
 """System prompts for each agent role.
 
-Kept as plain formattable strings (not a templating engine) since the
-inputs are small and the priority is that judges/reviewers can read the
-exact prompt sent to the model. Each prompt names the safety/carbon
-constraints explicitly so the LLM's own stated reasoning reflects them --
-this is what feeds the dashboard's "AI Reasoning" panel.
+Plain formattable strings rather than a templating engine - inputs are
+small, and it should be easy to just read the exact prompt sent to the
+model. Each one names the safety/carbon constraints directly so the LLM's
+own reasoning reflects them; that reasoning is what ends up in the
+dashboard's AI Reasoning panel.
 """
 
 from __future__ import annotations

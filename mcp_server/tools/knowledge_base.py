@@ -59,10 +59,10 @@ class KnowledgeBase:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-        # Constructing a SentenceTransformer downloads the model on first
-        # use, so it is deferred until actually needed (embed_chunks/
-        # embed_query) instead of happening unconditionally here. Tests can
-        # inject a fake encoder via ``model=``.
+        # SentenceTransformer(...) downloads the model on first use, so we
+        # hold off until embed_chunks/embed_query actually need it instead
+        # of doing it here unconditionally. Tests can pass a fake encoder
+        # via model=.
         self._model = model
 
         self.documents: dict[str, Document] = {}

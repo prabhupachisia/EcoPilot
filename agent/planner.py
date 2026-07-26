@@ -9,10 +9,10 @@ from agent.tools import ToolExecutor
 from mcp_server.tools.building.models import ActionType, BuildingAction, BuildingComponent
 from telemetry.models import BuildingState
 
-# Advertised to the LLM as an Ollama/OpenAI-style function schema. Kept to a
-# single tool (mirroring mcp_server's set_hvac_setpoints convenience tool)
-# rather than exposing the full apply_building_action surface -- a smaller
-# tool surface is easier for a 3B model to use reliably.
+# Advertised to the LLM as an Ollama/OpenAI-style function schema. Only one
+# tool on purpose (mirrors set_hvac_setpoints on the MCP server) instead of
+# the full apply_building_action surface - a 3B model tool-calls a lot more
+# reliably with fewer options to pick from.
 PLANNER_TOOLS = [
     {
         "type": "function",
@@ -46,11 +46,9 @@ class PlannerProposal:
 class Planner:
     """Reads the current situation and proposes HVAC setpoint changes.
 
-    Retrieval happens first (memory of similar past cycles), then a single
-    LLM call proposes actions -- matching plan.txt's "Planner retrieves
-    similar historical situations before making decisions" design, just
-    implemented as one call that takes the retrieved cases as input rather
-    than two separate round-trips.
+    Memory retrieval happens first, then one LLM call proposes actions
+    using the retrieved cases as context - rather than a separate
+    "consult memory" round trip.
     """
 
     def __init__(self, llm: LLMClient, tools: ToolExecutor) -> None:

@@ -1,12 +1,12 @@
 """EcoPilot CLI entrypoint.
 
-Runs the closed-loop HVAC optimization: a baseline simulation, then up to
-``--cycles`` LangGraph-orchestrated optimization cycles (Planner -> Analyst
--> Controller -> Reflection), writing a summary report and per-cycle logs.
+Runs the closed loop: a baseline simulation, then up to --cycles
+LangGraph-orchestrated optimization cycles (Planner -> Analyst ->
+Controller -> Reflection), writing a summary report and per-cycle logs.
 
-``--dry-run`` swaps in synthetic dependencies (agent/dry_run.py) so the
-whole loop -- including tool-calling and LangGraph control flow -- can be
-smoke-tested with no EnergyPlus or Ollama installed.
+--dry-run swaps in the synthetic dependencies from agent/dry_run.py, so
+the whole loop - tool-calling and all - can be smoke-tested without
+EnergyPlus or Ollama installed.
 """
 
 from __future__ import annotations

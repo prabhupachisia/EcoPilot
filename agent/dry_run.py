@@ -1,10 +1,10 @@
-"""Synthetic dependencies for ``python main.py --dry-run``.
+"""Synthetic dependencies for `python main.py --dry-run`.
 
-Lets the full closed loop (LangGraph orchestrator, Planner/Analyst/
-Controller/Reflection, safety supervisor, experience memory) run and be
-smoke-tested end-to-end on a machine with neither EnergyPlus nor Ollama
-installed -- everything downstream of ``build_dry_run_environment`` is the
-same production code path used with real dependencies.
+Lets the whole closed loop - LangGraph orchestrator, all four agents,
+safety supervisor, experience memory - run end to end on a machine with
+neither EnergyPlus nor Ollama installed. Everything downstream of
+build_dry_run_environment() is the same code that runs with real
+dependencies; only the LLM and tool responses are faked.
 """
 
 from __future__ import annotations

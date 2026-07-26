@@ -1,9 +1,8 @@
 """EcoPilot Streamlit dashboard.
 
-Reads the JSON logs/reports main.py writes (dashboard/data.py) rather than
-holding a live connection to a running optimization loop -- Streamlit's
-rerun model doesn't play well with a long-running LangGraph loop in the
-same process. Every page degrades gracefully before any run has happened.
+Reads whatever main.py last wrote to logs/ and reports/ (see
+dashboard/data.py) instead of connecting to a live run. Every page is fine
+with nothing there yet, too.
 
 Run with: streamlit run dashboard/app.py
 """
@@ -241,10 +240,10 @@ def render_audit_trail() -> None:
 
     st.subheader("Rollback to a saved cycle")
     st.caption(
-        "Each cycle's modified IDF is saved to disk (energyplus/models/). "
-        "Since this dashboard is a separate process from the run that "
-        "produced them, 'rollback' here marks which saved file to resume "
-        "from rather than mutating a live in-memory model."
+        "Each cycle's modified IDF is saved to disk under energyplus/models/. "
+        "This dashboard runs in its own process, so 'rollback' here just "
+        "marks which saved file to resume from, rather than reaching into "
+        "a live model in memory."
     )
 
     saved_idfs = list_saved_cycle_idfs()

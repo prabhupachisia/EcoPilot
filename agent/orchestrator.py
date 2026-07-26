@@ -21,19 +21,17 @@ from telemetry.models import BuildingMetadata, BuildingState, OptimizationSnapsh
 class OptimizationState(TypedDict, total=False):
     """Shared state threaded through one cycle's LangGraph node sequence.
 
-    Matches plan.txt's Autonomous Loop diagram: read metrics -> planner ->
-    analyst -> memory retrieval -> decision -> controller -> run simulation
-    -> telemetry parser -> evaluation -> reflection -> store experience ->
-    satisfied?. Memory retrieval is placed before the planner in the actual
-    node order (the Planner needs retrieved cases as an input), which is a
-    data-dependency detail rather than a deviation from the design.
+    Node order: read metrics -> memory retrieval -> planner -> controller ->
+    run simulation -> telemetry parser -> evaluation -> analyst -> reflection
+    -> store experience -> satisfied check. Memory retrieval runs before the
+    planner since the planner needs the retrieved cases as input.
 
-    The repeat-until-satisfied-or-max-cycles loop itself is NOT a cycle in
-    this graph -- it's driven by ``run_optimization_loop`` in plain Python,
-    invoking this per-cycle graph once per iteration. That keeps each
-    cycle's graph run independently traceable (useful for the dashboard's
-    audit trail) and avoids tuning LangGraph's recursion limit for an
-    unbounded loop-back edge.
+    The repeat-until-satisfied-or-max-cycles part isn't a loop in this
+    graph - run_optimization_loop() below drives that in plain Python,
+    calling this per-cycle graph once per iteration. Keeps each cycle
+    independently traceable (handy for the dashboard's audit trail) and
+    means not having to tune LangGraph's recursion limit for what would
+    otherwise be an unbounded loop-back edge.
     """
 
     cycle: int
@@ -78,10 +76,9 @@ def build_cycle_graph(
 ):
     """Build and compile the LangGraph for one optimization cycle.
 
-    All agent dependencies are constructor-injected (falling back to real
-    ones built from ``llm``/``tools``/``safety``), so the whole graph is
-    invokable in tests with ``FakeLLMClient``/``FakeToolExecutor`` -- no
-    live Ollama or EnergyPlus required.
+    Agent dependencies are constructor-injected, falling back to real ones
+    built from llm/tools/safety - so the whole graph runs fine in tests
+    with a FakeLLMClient/FakeToolExecutor and no live Ollama or EnergyPlus.
     """
 
     planner = planner or Planner(llm=llm, tools=tools)
@@ -225,11 +222,11 @@ def run_optimization_loop(
     metadata: BuildingMetadata,
     max_cycles: int = MAX_OPTIMIZATION_CYCLES,
 ) -> list[OptimizationState]:
-    """Drive the repeat-until-satisfied-or-max-cycles loop around ``graph``.
+    """Run the per-cycle graph repeatedly until satisfied or max_cycles.
 
-    Each iteration invokes the compiled per-cycle graph once, threading the
-    prior cycle's resulting state and evaluation score forward as the next
-    cycle's input. Stops early the first cycle whose evaluation passes.
+    Each iteration threads the prior cycle's resulting state and evaluation
+    score into the next one's input, and stops early on the first cycle
+    whose evaluation passes.
     """
 
     history: list[OptimizationState] = []

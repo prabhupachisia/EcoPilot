@@ -17,12 +17,10 @@ HOURS_PER_DAY = 24
 class CarbonIntensityProfile:
     """Hourly grid carbon-intensity curve (kg CO2 per kWh of electricity).
 
-    The problem statement explicitly names "local carbon grid intensity" as
-    an optimization target, but nothing upstream of this module tracks it.
-    This is a small, hand-authored, documented-as-representative 24-hour
-    curve (see ``config/carbon_intensity.json``) rather than a live grid
-    API -- the goal is to make carbon intensity a first-class signal the
-    Planner reasons about, not to source real-time grid data.
+    Backed by a small, hand-authored 24-hour curve (config/carbon_intensity.json)
+    rather than a live grid API - good enough to make carbon intensity a
+    real signal the Planner reasons about when it's deciding when to
+    precool/preheat, without needing a subscription to a grid-intensity feed.
     """
 
     def __init__(

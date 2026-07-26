@@ -11,14 +11,12 @@ from session import SimulationSessionManager
 class DependencyProvider:
     """Constructs and shares the runtime dependencies used by MCP tools.
 
-    ``building``, ``knowledge_base``, ``experience_memory``, and
-    ``carbon_profile`` are all built lazily on first access rather than
-    eagerly in ``__init__``: constructing a ``BuildingManager`` needs a
-    real IDD file, constructing a ``KnowledgeBase`` triggers a network call
-    to download its embedding model, and the other two touch disk -- none
-    of which should happen just because a ``DependencyProvider`` was
-    instantiated (e.g. in a test that only cares about
-    ``energyplus_runner``).
+    building, knowledge_base, experience_memory, and carbon_profile are all
+    built lazily on first access instead of in __init__: a BuildingManager
+    needs a real IDD file, a KnowledgeBase downloads its embedding model
+    over the network, and the other two touch disk. None of that should
+    happen just because someone instantiated a DependencyProvider in a test
+    that only cares about energyplus_runner.
     """
 
     def __init__(

@@ -185,9 +185,9 @@ class BuildingStateExtractor:
     def extract_peak_demand(self) -> float | None:
         """Return the peak hourly electricity demand (kW).
 
-        Each hourly meter reading is the energy (J) consumed during that
-        hour, so converting it to kWh is numerically the average kW during
-        that hour -- the MAX across all hours is the peak demand.
+        Each hourly meter reading is energy (J) consumed during that hour,
+        so converting to kWh gives the average kW for that hour - taking
+        the MAX across all hours gives the peak demand.
         """
 
         peak_joules = self._get_metric(

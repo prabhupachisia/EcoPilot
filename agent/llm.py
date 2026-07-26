@@ -24,9 +24,9 @@ class LLMResponse:
 class LLMClient(Protocol):
     """The narrow interface every agent role depends on.
 
-    Kept deliberately small (one method) so a real ``OllamaLLMClient`` and
-    a scripted ``FakeLLMClient`` are interchangeable -- agent unit tests
-    never need a live Ollama instance.
+    One method, on purpose - a real OllamaLLMClient and a scripted
+    FakeLLMClient stay interchangeable that way, so agent tests never need
+    a live Ollama instance.
     """
 
     def complete(

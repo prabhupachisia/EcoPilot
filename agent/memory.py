@@ -19,11 +19,10 @@ FEATURE_DIMENSIONS = 5
 class Experience:
     """A single optimization cycle's situation and outcome.
 
-    This is case-based memory, not document RAG: the Planner retrieves past
-    cycles with a *numerically* similar situation (weather, occupancy,
-    setpoints, carbon intensity) rather than semantically similar text --
-    distinct from ``mcp_server/tools/knowledge_base.py``'s ASHRAE/EnergyPlus
-    document search.
+    Case memory, not document RAG - the planner looks for past cycles with
+    a numerically similar situation (weather, occupancy, setpoints, carbon
+    intensity), not semantically similar text. See knowledge_base.py for
+    the actual document search over ASHRAE/EnergyPlus references.
     """
 
     cycle: int
@@ -72,11 +71,11 @@ class Experience:
 class ExperienceStore:
     """FAISS-backed case memory of past optimization cycles.
 
-    Deliberately numeric-feature-only (no sentence-transformers/torch
-    dependency): the index is rebuilt from the in-memory experience list on
-    every retrieval, which is trivial at the scale of a single optimization
-    run (tens to low hundreds of cycles) and avoids keeping an incremental
-    FAISS index in sync with JSON persistence.
+    Numeric features only, no sentence-transformers/torch. Rebuilds the
+    index from the in-memory list on every retrieval instead of maintaining
+    an incremental one - fine at this scale (a run is tens, maybe low
+    hundreds of cycles) and one less thing to keep in sync with the JSON
+    file on disk.
     """
 
     def __init__(self, path: Path = EXPERIENCE_MEMORY_PATH) -> None:

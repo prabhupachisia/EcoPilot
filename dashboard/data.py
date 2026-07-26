@@ -1,16 +1,14 @@
 """Read-only data loaders for the Streamlit dashboard.
 
-The dashboard is a separate process from the one that ran the
-optimization loop (main.py) -- Streamlit's rerun model doesn't play well
-with a long-running LangGraph loop in the same process. So it reads the
-JSON logs/reports main.py writes rather than holding a live connection,
-and every loader here degrades gracefully (returns an empty/None result)
-before any run has happened yet, so the dashboard is usable immediately
-after a fresh clone.
+The dashboard runs as a separate process from whatever ran the
+optimization loop (main.py) - Streamlit's rerun model and a long-running
+LangGraph loop don't mix well in the same process. So instead of holding a
+live connection, it just reads the JSON logs/reports main.py writes.
+Every loader here degrades gracefully to an empty/None result before any
+run has happened, so the dashboard isn't broken on a fresh clone.
 
-Kept separate from app.py (which does the Streamlit rendering) so this
-module -- the part with actual logic -- is unit-testable without a
-Streamlit runtime.
+Split out from app.py so the actual logic can be unit-tested without
+spinning up a Streamlit runtime.
 """
 
 from __future__ import annotations

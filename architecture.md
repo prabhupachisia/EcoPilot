@@ -157,14 +157,12 @@ cycle count.
 
 ## Novelty beyond the base multi-agent design
 
-1. **Grid carbon-intensity-aware scheduling** — the problem statement
-   explicitly names "local carbon grid intensity" as an optimization
-   target; nothing upstream of `mcp_server/tools/carbon.py` tracked it.
-   `CarbonIntensityProfile` (backed by a small, hand-authored, documented-
-   as-representative `config/carbon_intensity.json` 24-hour curve — not a
-   live grid API) surfaces `get_low_carbon_hours`/`get_carbon_intensity`
-   tools the Planner is explicitly prompted to reason about, and the
-   dashboard estimates baseline-vs-optimized kg CO2 from it.
+1. **Grid carbon-intensity-aware scheduling** — most HVAC optimizers only
+   chase kWh. `CarbonIntensityProfile` adds a second axis: a small,
+   hand-authored 24-hour kg CO2/kWh curve (`config/carbon_intensity.json`,
+   not a live grid feed) that the Planner is explicitly prompted to reason
+   about via `get_low_carbon_hours`/`get_carbon_intensity`, and that the
+   dashboard uses to estimate baseline-vs-optimized kg CO2.
 2. **Deterministic Safety Supervisor** (`agent/safety.py`) — a non-LLM
    guardrail. Every LLM-proposed setpoint is clipped to
    `COOLING_SETPOINT_SAFE_RANGE`/`HEATING_SETPOINT_SAFE_RANGE`

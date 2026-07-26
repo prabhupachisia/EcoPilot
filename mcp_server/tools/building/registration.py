@@ -103,9 +103,7 @@ def register_building_tools(
         description=(
             "Save the current in-memory building model to an IDF file, "
             "returning the saved path. Used to persist each optimization "
-            "cycle's modified building alongside the baseline, per the "
-            "hackathon's 'modified versions generated during runtime "
-            "evaluation' deliverable."
+            "cycle's modified building alongside the baseline."
         ),
     )
     def save_building(path: str | None = None) -> str:

@@ -29,12 +29,11 @@ def _is_success(result: Any) -> bool:
 class Controller:
     """The only component allowed to execute building modifications.
 
-    Every proposed action is safety-checked (clipped/rejected) before
-    dispatch, and the whole batch is wrapped in a transaction so a partial
-    failure rolls back cleanly instead of leaving the building half-edited
-    -- this is the "self-correction loop" the Planner's proposals run
-    through on their way to EnergyPlus. Deliberately makes no LLM call:
-    execution is a disciplined, deterministic step, not a reasoning one.
+    Every proposed action gets safety-checked (clipped/rejected) before
+    dispatch, and the whole batch runs inside a transaction so a partial
+    failure rolls back cleanly instead of leaving the building half-edited.
+    No LLM call here - execution should be a disciplined, deterministic
+    step, not another round of reasoning.
     """
 
     def __init__(self, tools: ToolExecutor, safety: SafetySupervisor) -> None:
