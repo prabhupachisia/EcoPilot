@@ -51,7 +51,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def _build_live_environment(
     idf_path: Path,
-) -> tuple[LLMClient, ToolExecutor, ExperienceStore, SafetySupervisor, BuildingState, BuildingMetadata]:
+) -> tuple[
+    LLMClient, ToolExecutor, ExperienceStore, SafetySupervisor, BuildingState, BuildingMetadata, DependencyProvider
+]:
     dependencies = DependencyProvider()
     dependencies.building.load()
     dependencies.building.save_baseline()
@@ -86,7 +88,7 @@ def _build_live_environment(
         runtime_seconds=simulation_result.runtime_seconds,
     )
 
-    return llm, tools, memory, safety, baseline_state, metadata
+    return llm, tools, memory, safety, baseline_state, metadata, dependencies
 
 
 def _print_summary(history: list[OptimizationState]) -> None:
@@ -117,9 +119,29 @@ def _write_logs(history: list[OptimizationState]) -> None:
     decision_log = [
         {
             "cycle": entry["cycle"],
-            "rationale": entry["proposal"].rationale,
+            "thought": entry["proposal"].rationale,
+            "retrieved_memory": [
+                {
+                    "cycle": experience.cycle,
+                    "action_summary": experience.action_summary,
+                    "savings_percent": experience.savings_percent,
+                    "outcome": experience.outcome,
+                    "distance": distance,
+                }
+                for experience, distance in entry.get("similar_cases", [])
+            ],
             "committed": entry["controller_result"].committed,
             "message": entry["controller_result"].message,
+            "safety_decisions": [
+                {
+                    "parameter": decision.action.parameter,
+                    "verdict": decision.verdict.value,
+                    "original_value": decision.original_value,
+                    "applied_value": decision.applied_value,
+                    "reason": decision.reason,
+                }
+                for decision in entry["controller_result"].safety_decisions
+            ],
         }
         for entry in history
     ]
@@ -139,16 +161,59 @@ def _write_logs(history: list[OptimizationState]) -> None:
     )
 
 
+def _write_audit_trail(dependencies: DependencyProvider | None) -> None:
+    """Export building change history + snapshots for the dashboard's audit trail.
+
+    Only available in live mode -- --dry-run has no real BuildingManager to
+    read history/snapshots from.
+    """
+
+    if dependencies is None:
+        return
+
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+    building = dependencies.building
+
+    changes = [
+        {
+            "timestamp": change.timestamp.isoformat(),
+            "component": change.component.value,
+            "target": change.target,
+            "parameter": change.parameter,
+            "previous_value": change.previous_value,
+            "new_value": change.new_value,
+            "reason": change.reason,
+        }
+        for change in building.history
+    ]
+
+    snapshots = [
+        {"name": snapshot.name, "created_at": snapshot.created_at.isoformat()}
+        for snapshot in building.list_snapshots()
+    ]
+
+    (LOGS_DIR / "audit_trail.json").write_text(
+        json.dumps({"changes": changes, "snapshots": snapshots}, indent=2),
+        encoding="utf-8",
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     max_cycles = args.cycles or MAX_OPTIMIZATION_CYCLES
 
+    dependencies: DependencyProvider | None
+
     if args.dry_run:
         logger.info("Running in --dry-run mode (synthetic LLM/tool responses).")
         llm, tools, memory, safety, baseline_state, metadata = build_dry_run_environment(max_cycles)
+        dependencies = None
     else:
         idf_path = Path(args.idf) if args.idf else BASELINE_IDF
-        llm, tools, memory, safety, baseline_state, metadata = _build_live_environment(idf_path)
+        llm, tools, memory, safety, baseline_state, metadata, dependencies = _build_live_environment(
+            idf_path
+        )
 
     graph = build_cycle_graph(llm=llm, tools=tools, memory=memory, safety=safety)
 
@@ -172,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     _write_logs(history)
+    _write_audit_trail(dependencies)
     _print_summary(history)
 
     logger.info(f"Completed {len(history)} cycle(s).")
