@@ -11,6 +11,7 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "EcoPilot")
 
 ENERGYPLUS_HOME = Path(os.getenv("ENERGYPLUS_HOME", ""))
 ENERGYPLUS_EXE = Path(os.getenv("ENERGYPLUS_EXE", ""))
+IDD_PATH = Path(os.getenv("IDD_PATH", "")) or (ENERGYPLUS_HOME / "Energy+.idd")
 
 BASELINE_IDF = PROJECT_ROOT / "energyplus" / "baseline" / "building.idf"
 WEATHER_FILE = PROJECT_ROOT / "energyplus" / "weather" / "weather.epw"

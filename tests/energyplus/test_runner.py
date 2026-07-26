@@ -2,11 +2,17 @@ from pathlib import Path
 
 import pytest
 
-from config.settings import BASELINE_IDF, OUTPUT_DIR
+from config.settings import BASELINE_IDF, ENERGYPLUS_EXE, OUTPUT_DIR
 from energyplus.models import SimulationResult
 from energyplus.runner import EnergyPlusRunner
 
+requires_energyplus = pytest.mark.skipif(
+    not ENERGYPLUS_EXE.exists(),
+    reason="EnergyPlus is not installed on this machine.",
+)
 
+
+@requires_energyplus
 def test_runner_initialization() -> None:
     runner = EnergyPlusRunner()
 
@@ -28,6 +34,7 @@ def test_invalid_idf_raises() -> None:
         )
 
 
+@requires_energyplus
 def test_energyplus_simulation() -> None:
     runner = EnergyPlusRunner()
 

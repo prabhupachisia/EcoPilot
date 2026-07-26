@@ -6,8 +6,8 @@ from telemetry.reader import SQLiteReader
 
 
 @pytest.fixture
-def sql_file() -> Path:
-    return Path("energyplus/outputs/pytest_run/eplusout.sql")
+def sql_file(sql_database: Path) -> Path:
+    return sql_database
 
 
 def test_reader_initialization(sql_file: Path):

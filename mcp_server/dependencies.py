@@ -1,19 +1,35 @@
+from config.settings import BASELINE_IDF, IDD_PATH, WEATHER_FILE
 from energyplus.runner import EnergyPlusRunner
+from mcp_server.tools.building.manager import BuildingManager
+from mcp_server.tools.knowledge_base import KnowledgeBase
 from telemetry.parser import TelemetryParser
 from session import SimulationSessionManager
 
 
 class DependencyProvider:
+    """Constructs and shares the runtime dependencies used by MCP tools.
+
+    ``building`` and ``knowledge_base`` are built lazily on first access
+    rather than eagerly in ``__init__``: constructing a ``BuildingManager``
+    needs a real IDD file and constructing a ``KnowledgeBase`` triggers a
+    network call to download its embedding model, neither of which should
+    happen just because a ``DependencyProvider`` was instantiated (e.g. in
+    a test that only cares about ``energyplus_runner``).
+    """
+
     def __init__(
         self,
         energyplus_runner: EnergyPlusRunner | None = None,
         telemetry_parser: TelemetryParser | None = None,
         session_manager: SimulationSessionManager | None = None,
+        building: BuildingManager | None = None,
+        knowledge_base: KnowledgeBase | None = None,
     ) -> None:
         self._energyplus_runner = energyplus_runner or EnergyPlusRunner()
         self._telemetry_parser = telemetry_parser or TelemetryParser()
         self._session_manager = session_manager or SimulationSessionManager()
-        
+        self._building = building
+        self._knowledge_base = knowledge_base
 
     @property
     def energyplus_runner(self) -> EnergyPlusRunner:
@@ -26,3 +42,19 @@ class DependencyProvider:
     @property
     def session_manager(self) -> SimulationSessionManager:
         return self._session_manager
+
+    @property
+    def building(self) -> BuildingManager:
+        if self._building is None:
+            self._building = BuildingManager(
+                idd_path=IDD_PATH,
+                idf_path=BASELINE_IDF,
+                weather_file=WEATHER_FILE,
+            )
+        return self._building
+
+    @property
+    def knowledge_base(self) -> KnowledgeBase:
+        if self._knowledge_base is None:
+            self._knowledge_base = KnowledgeBase()
+        return self._knowledge_base

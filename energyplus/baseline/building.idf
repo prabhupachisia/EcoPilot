@@ -2987,6 +2987,8 @@
 
   Output:Surfaces:Drawing,dxf;
 
+  Output:Meter,Electricity:Facility,hourly;
+
   Output:Meter:MeterFileOnly,Electricity:Facility,monthly;
 
   Output:Meter:MeterFileOnly,Electricity:Building,monthly;

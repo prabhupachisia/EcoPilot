@@ -20,6 +20,16 @@ class QueryMixin:
                 return zone
         return None
 
+    def zone_names(self) -> list[str]:
+        return [zone.Name for zone in self.zones() if hasattr(zone, "Name")]
+
+    def surfaces(self) -> list[EpBunch]:
+        self.helpers.require_loaded()
+        return list(self.idf.idfobjects.get("BUILDINGSURFACE:DETAILED", []))
+
+    def surface_names(self) -> list[str]:
+        return [surface.Name for surface in self.surfaces() if hasattr(surface, "Name")]
+
     def schedules(self, schedule_type: str | None = None) -> list[EpBunch]:
         self.helpers.require_loaded()
 
@@ -40,6 +50,10 @@ class QueryMixin:
                 return schedule
         return None
 
+    def get_schedule(self, name: str) -> EpBunch | None:
+        """Alias for ``schedule`` used by the validation mixin."""
+        return self.schedule(name)
+
     def people(self) -> list[EpBunch]:
         return list(self.idf.idfobjects.get("PEOPLE", []))
 
@@ -48,6 +62,9 @@ class QueryMixin:
             if person.Name == name:
                 return person
         return None
+
+    def people_names(self) -> list[str]:
+        return [person.Name for person in self.people() if hasattr(person, "Name")]
 
     def lights(self) -> list[EpBunch]:
         return list(self.idf.idfobjects.get("LIGHTS", []))
@@ -58,6 +75,9 @@ class QueryMixin:
                 return light
         return None
 
+    def light_names(self) -> list[str]:
+        return [light.Name for light in self.lights() if hasattr(light, "Name")]
+
     def equipment(self) -> list[EpBunch]:
         return list(self.idf.idfobjects.get("ELECTRICEQUIPMENT", []))
 
@@ -66,6 +86,9 @@ class QueryMixin:
             if equipment.Name == name:
                 return equipment
         return None
+
+    def equipment_names(self) -> list[str]:
+        return [item.Name for item in self.equipment() if hasattr(item, "Name")]
 
     def materials(self) -> list[EpBunch]:
         return list(self.idf.idfobjects.get("MATERIAL", []))
@@ -98,6 +121,9 @@ class QueryMixin:
             if window.Name == name:
                 return window
         return None
+
+    def window_names(self) -> list[str]:
+        return [window.Name for window in self.windows() if hasattr(window, "Name")]
 
     def thermostats(self) -> list[EpBunch]:
         return list(

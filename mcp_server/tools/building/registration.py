@@ -1,8 +1,20 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastmcp import FastMCP
 
-from mcp_server.dependencies import DependencyProvider
+from mcp_server.tools.building.models import (
+    ActionResult,
+    ActionType,
+    BuildingAction,
+    BuildingComponent,
+)
+
+if TYPE_CHECKING:
+    # DependencyProvider constructs a BuildingManager, which imports this
+    # module's package — importing it at runtime here would be circular.
+    from mcp_server.dependencies import DependencyProvider
 
 
 def register_building_tools(
@@ -31,14 +43,58 @@ def register_building_tools(
         name="apply_building_action",
         description="Apply a single modification to the building.",
     )
-    def apply_building_action(action):
+    def apply_building_action(action: BuildingAction) -> ActionResult:
         return dependencies.building.apply_action(action)
 
     @server.tool(
         name="apply_building_actions",
         description="Apply multiple building modifications.",
     )
-    def apply_building_actions(actions):
+    def apply_building_actions(actions: list[BuildingAction]) -> list[ActionResult]:
+        return dependencies.building.apply_actions(actions)
+
+    @server.tool(
+        name="set_hvac_setpoints",
+        description=(
+            "Set the building's occupied cooling and/or heating setpoint "
+            "temperature (°C) in one call. Pass only the setpoint(s) you "
+            "want to change; omit the other."
+        ),
+    )
+    def set_hvac_setpoints(
+        cooling_c: float | None = None,
+        heating_c: float | None = None,
+        reason: str | None = None,
+    ) -> list[ActionResult]:
+        actions = []
+
+        if cooling_c is not None:
+            actions.append(
+                BuildingAction(
+                    component=BuildingComponent.THERMOSTAT,
+                    action=ActionType.SET,
+                    target="building",
+                    parameter="cooling_setpoint_temperature",
+                    value=cooling_c,
+                    reason=reason,
+                )
+            )
+
+        if heating_c is not None:
+            actions.append(
+                BuildingAction(
+                    component=BuildingComponent.THERMOSTAT,
+                    action=ActionType.SET,
+                    target="building",
+                    parameter="heating_setpoint_temperature",
+                    value=heating_c,
+                    reason=reason,
+                )
+            )
+
+        if not actions:
+            raise ValueError("At least one of cooling_c/heating_c is required.")
+
         return dependencies.building.apply_actions(actions)
 
     @server.tool(

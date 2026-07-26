@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 import faiss
 import numpy as np
@@ -10,7 +10,10 @@ from sentence_transformers import SentenceTransformer
 import json
 from fastmcp import FastMCP
 
-from mcp_server.dependencies import DependencyProvider
+if TYPE_CHECKING:
+    # DependencyProvider constructs a KnowledgeBase — importing it at
+    # runtime here would be circular.
+    from mcp_server.dependencies import DependencyProvider
 
 
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -40,6 +43,7 @@ class DocumentChunk:
 @dataclass(slots=True)
 class SearchResult:
     chunk: DocumentChunk
+    document: Document
     score: float
 
 
@@ -49,14 +53,17 @@ class KnowledgeBase:
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
+        model: "SentenceTransformer | None" = None,
     ) -> None:
         self.embedding_model_name = embedding_model
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-        self.model = SentenceTransformer(
-            embedding_model
-        )
+        # Constructing a SentenceTransformer downloads the model on first
+        # use, so it is deferred until actually needed (embed_chunks/
+        # embed_query) instead of happening unconditionally here. Tests can
+        # inject a fake encoder via ``model=``.
+        self._model = model
 
         self.documents: dict[str, Document] = {}
         self.chunks: dict[str, DocumentChunk] = {}
@@ -65,6 +72,12 @@ class KnowledgeBase:
         self.index: faiss.Index | None = None
 
         self.chunk_order: list[str] = []
+
+    @property
+    def model(self) -> "SentenceTransformer":
+        if self._model is None:
+            self._model = SentenceTransformer(self.embedding_model_name)
+        return self._model
 
     @property
     def document_count(self) -> int:
@@ -97,6 +110,8 @@ class KnowledgeBase:
         if not path.exists():
             raise FileNotFoundError(path)
 
+        metadata = metadata or {}
+
         document = Document(
             id=str(uuid.uuid4()),
             name=path.stem,
@@ -105,7 +120,9 @@ class KnowledgeBase:
                 encoding="utf-8",
                 errors="ignore",
             ),
-            metadata=metadata or {},
+            source=str(path),
+            category=metadata.get("category", "general"),
+            metadata=metadata,
         )
 
         self.documents[document.id] = document
@@ -368,6 +385,8 @@ class KnowledgeBase:
                     "id": document.id,
                     "name": document.name,
                     "path": str(document.path),
+                    "source": document.source,
+                    "category": document.category,
                     "metadata": document.metadata,
                 }
                 for document in self.documents.values()
@@ -419,6 +438,8 @@ class KnowledgeBase:
                 name=doc["name"],
                 path=Path(doc["path"]),
                 text="",
+                source=doc.get("source", doc["path"]),
+                category=doc.get("category", "general"),
                 metadata=doc["metadata"],
             )
 

@@ -23,6 +23,14 @@ class HVACMixin:
     HEATING_COIL_OBJECT = "Coil:Heating:Fuel"
     OA_CONTROLLER_OBJECT = "Controller:OutdoorAir"
 
+    # The reference model's five zones all share these two setpoint
+    # schedules, so editing them once retunes the whole building's occupied
+    # comfort setpoint.
+    COOLING_SETPOINT_SCHEDULE = "Clg-SetP-Sch"
+    HEATING_SETPOINT_SCHEDULE = "Htg-SetP-Sch"
+    OCCUPIED_DAY_TYPE = "WeekDays"
+    OCCUPIED_UNTIL = "18:00"
+
     # ------------------------------------------------------------------
     # Internal lookup helpers
     # ------------------------------------------------------------------
@@ -212,6 +220,74 @@ class HVACMixin:
         )
 
         self._mark_dirty()
+
+    # ------------------------------------------------------------------
+    # Numeric Setpoint Temperature (the actual comfort/energy lever)
+    # ------------------------------------------------------------------
+
+    def zone_cooling_setpoint_temperature(self) -> float:
+        """Return the current occupied weekday cooling setpoint (°C)."""
+
+        return self.get_compact_schedule_period_value(
+            self.COOLING_SETPOINT_SCHEDULE,
+            self.OCCUPIED_DAY_TYPE,
+            self.OCCUPIED_UNTIL,
+        )
+
+    def zone_heating_setpoint_temperature(self) -> float:
+        """Return the current occupied weekday heating setpoint (°C)."""
+
+        return self.get_compact_schedule_period_value(
+            self.HEATING_SETPOINT_SCHEDULE,
+            self.OCCUPIED_DAY_TYPE,
+            self.OCCUPIED_UNTIL,
+        )
+
+    def set_zone_cooling_setpoint_temperature(
+        self,
+        value: float,
+        reason: str | None = None,
+    ) -> float:
+        """Set the occupied weekday cooling setpoint (°C) for every zone.
+
+        All five zones in the reference model share ``Clg-SetP-Sch``, so
+        this single edit retunes the whole building.
+        """
+
+        result = self.set_compact_schedule_period_value(
+            self.COOLING_SETPOINT_SCHEDULE,
+            self.OCCUPIED_DAY_TYPE,
+            self.OCCUPIED_UNTIL,
+            value,
+            reason,
+        )
+
+        self._mark_dirty()
+
+        return result
+
+    def set_zone_heating_setpoint_temperature(
+        self,
+        value: float,
+        reason: str | None = None,
+    ) -> float:
+        """Set the occupied weekday heating setpoint (°C) for every zone.
+
+        All five zones in the reference model share ``Htg-SetP-Sch``, so
+        this single edit retunes the whole building.
+        """
+
+        result = self.set_compact_schedule_period_value(
+            self.HEATING_SETPOINT_SCHEDULE,
+            self.OCCUPIED_DAY_TYPE,
+            self.OCCUPIED_UNTIL,
+            value,
+            reason,
+        )
+
+        self._mark_dirty()
+
+        return result
 
     def set_dual_setpoint(
         self,

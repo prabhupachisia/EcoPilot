@@ -197,6 +197,8 @@ class BuildingManager(
             (BuildingComponent.INFILTRATION, ActionType.SET, "minimum_outdoor_air"): lambda: self.set_minimum_outdoor_air(action.target, float(action.value), action.reason),
             (BuildingComponent.INFILTRATION, ActionType.SET, "maximum_outdoor_air"): lambda: self.set_maximum_outdoor_air(action.target, float(action.value), action.reason),
             (BuildingComponent.INFILTRATION, ActionType.SCALE, "outdoor_air"): lambda: self.scale_outdoor_air(action.target, float(action.value), action.reason),
+            (BuildingComponent.THERMOSTAT, ActionType.SET, "cooling_setpoint_temperature"): lambda: self.set_zone_cooling_setpoint_temperature(float(action.value), action.reason),
+            (BuildingComponent.THERMOSTAT, ActionType.SET, "heating_setpoint_temperature"): lambda: self.set_zone_heating_setpoint_temperature(float(action.value), action.reason),
         }
         try:
             return handlers[key]
@@ -216,6 +218,8 @@ class BuildingManager(
             (BuildingComponent.HVAC, "fan_max_flow_rate"): lambda: self.fan_max_flow_rate(action.target),
             (BuildingComponent.INFILTRATION, "minimum_outdoor_air"): lambda: self.minimum_outdoor_air(action.target),
             (BuildingComponent.INFILTRATION, "maximum_outdoor_air"): lambda: self.maximum_outdoor_air(action.target),
+            (BuildingComponent.THERMOSTAT, "cooling_setpoint_temperature"): lambda: self.zone_cooling_setpoint_temperature(),
+            (BuildingComponent.THERMOSTAT, "heating_setpoint_temperature"): lambda: self.zone_heating_setpoint_temperature(),
         }
         component = self._dispatch_component(action.component)
         parameter = self._canonical_parameter(component, action.parameter)
@@ -250,6 +254,10 @@ class BuildingManager(
             (BuildingComponent.HVAC, "maximum_flow_rate"): "fan_max_flow_rate",
             (BuildingComponent.INFILTRATION, "minimum_outdoor_air_flow_rate"): "minimum_outdoor_air",
             (BuildingComponent.INFILTRATION, "maximum_outdoor_air_flow_rate"): "maximum_outdoor_air",
+            (BuildingComponent.THERMOSTAT, "cooling_setpoint"): "cooling_setpoint_temperature",
+            (BuildingComponent.THERMOSTAT, "cooling_temperature"): "cooling_setpoint_temperature",
+            (BuildingComponent.THERMOSTAT, "heating_setpoint"): "heating_setpoint_temperature",
+            (BuildingComponent.THERMOSTAT, "heating_temperature"): "heating_setpoint_temperature",
         }
         return aliases.get((component, name), name)
 
