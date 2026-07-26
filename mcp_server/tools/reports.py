@@ -60,14 +60,14 @@ def generate_report(
     evaluation: EvaluationResult,
     cycle: int,
     decisions: list[dict[str, Any]] | None = None,
-    reports_dir: Path = REPORTS_DIR,
+    reports_dir: Path | None = None,
 ) -> Path:
     """Write a markdown + JSON report for one evaluated optimization cycle.
 
     Returns the markdown file's path.
     """
 
-    reports_dir = Path(reports_dir)
+    reports_dir = Path(reports_dir) if reports_dir is not None else REPORTS_DIR
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -93,10 +93,10 @@ def generate_report(
     return markdown_path
 
 
-def list_reports(reports_dir: Path = REPORTS_DIR) -> list[str]:
+def list_reports(reports_dir: Path | None = None) -> list[str]:
     """Return previously generated markdown report paths, sorted."""
 
-    reports_dir = Path(reports_dir)
+    reports_dir = Path(reports_dir) if reports_dir is not None else REPORTS_DIR
 
     if not reports_dir.exists():
         return []

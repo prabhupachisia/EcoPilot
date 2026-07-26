@@ -9,6 +9,11 @@ HEATING_SETPOINT_SAFE_RANGE = (18.0, 22.0)
 # that triggers an automatic snapshot/transaction rollback.
 REGRESSION_ROLLBACK_THRESHOLD = 0.10
 
+# Representative commercial electricity rate ($/kWh), for a quick cost
+# estimate alongside the energy/carbon numbers -- same "small constant
+# instead of a live feed" approach as the carbon-intensity profile.
+ELECTRICITY_RATE_PER_KWH = 0.16
+
 # One append-only log file per concern.
 SIMULATION_LOG_FILE = "simulation_log.json"
 DECISION_LOG_FILE = "decision_log.json"

@@ -19,6 +19,10 @@ WEATHER_FILE = PROJECT_ROOT / "energyplus" / "weather" / "weather.epw"
 MODELS_DIR = PROJECT_ROOT / "energyplus" / "models"
 OUTPUT_DIR = PROJECT_ROOT / "energyplus" / "outputs"
 
+# Where the dashboard's Setup page saves uploaded .idf/.epw files.
+UPLOADED_MODELS_DIR = MODELS_DIR / "uploaded"
+UPLOADED_WEATHER_DIR = WEATHER_FILE.parent / "uploaded"
+
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 

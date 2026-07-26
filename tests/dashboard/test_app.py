@@ -6,6 +6,23 @@ from streamlit.testing.v1 import AppTest
 
 APP_PATH = str(Path(__file__).parent.parent.parent / "dashboard" / "app.py")
 
+PAGE_LABELS = [
+    "Overview",
+    "Setup",
+    "Simulation Runner",
+    "Closed-Loop Runner",
+    "Outputs & Decisions",
+]
+
+
+def _page_option(at: AppTest, label: str) -> str:
+    return next(option for option in at.sidebar.radio[0].options if label in option)
+
+
+def _goto(at: AppTest, label: str) -> AppTest:
+    at.sidebar.radio[0].set_value(_page_option(at, label)).run(timeout=30)
+    return at
+
 
 def _point_at_empty_dirs(monkeypatch, tmp_path: Path) -> None:
     """Isolate a test from whatever real logs/reports/models happen to
@@ -30,16 +47,67 @@ def test_overview_renders_empty_state_with_no_data(tmp_path: Path, monkeypatch) 
     assert any("No optimization run yet" in info.value for info in at.info)
 
 
-@pytest.mark.parametrize("page_label", ["AI Reasoning", "Audit Trail", "Reports"])
+@pytest.mark.parametrize("page_label", PAGE_LABELS)
 def test_each_page_renders_without_exception(page_label: str, tmp_path: Path, monkeypatch) -> None:
     _point_at_empty_dirs(monkeypatch, tmp_path)
 
     at = AppTest.from_file(APP_PATH)
     at.run(timeout=30)
 
-    at.sidebar.radio[0].set_value(page_label).run(timeout=30)
+    _goto(at, page_label)
 
     assert not at.exception
+
+
+def test_simulation_runner_warns_when_energyplus_not_configured(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _point_at_empty_dirs(monkeypatch, tmp_path)
+
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=30)
+
+    _goto(at, "Simulation Runner")
+
+    assert not at.exception
+    assert any("EnergyPlus isn't configured" in warning.value for warning in at.warning)
+    assert len(at.button) == 0
+
+
+def test_closed_loop_runner_dry_run_completes_and_shows_agent_console(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import agent.run_logs as run_logs
+    import mcp_server.tools.reports as reports_module
+
+    monkeypatch.setattr(run_logs, "LOGS_DIR", tmp_path / "logs")
+    monkeypatch.setattr(reports_module, "REPORTS_DIR", tmp_path / "reports")
+
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=30)
+
+    _goto(at, "Closed-Loop Runner")
+    assert not at.exception
+
+    # Dry run defaults on since EnergyPlus isn't configured here; keep the
+    # test fast (1 cycle, no artificial pacing between chat messages).
+    at.checkbox[0].set_value(False).run(timeout=30)  # demo pacing off
+    at.number_input[0].set_value(1).run(timeout=30)
+
+    at.button[0].click().run(timeout=60)
+
+    assert not at.exception
+    assert len(at.chat_message) == 5  # Planner, Safety, Controller, Analyst, Reflection
+    assert any("Done" in success.value for success in at.success)
+
+    history = at.session_state["last_run_history"]
+    assert len(history) == 1
+
+    decision_log = json.loads((tmp_path / "logs" / "decision_log.json").read_text())
+    assert len(decision_log) == 1
+
+    reports = list((tmp_path / "reports").glob("*.md"))
+    assert len(reports) == 1
 
 
 def _write_sample_report(reports_dir: Path) -> None:
@@ -89,6 +157,9 @@ def _write_sample_report(reports_dir: Path) -> None:
     (reports_dir / "report_cycle_1_20260101_000000.json").write_text(
         json.dumps(payload), encoding="utf-8"
     )
+    (reports_dir / "report_cycle_1_20260101_000000.md").write_text(
+        "# EcoPilot Optimization Report -- Cycle 1\n", encoding="utf-8"
+    )
 
 
 def _write_sample_logs(logs_dir: Path) -> None:
@@ -116,7 +187,7 @@ def _write_sample_logs(logs_dir: Path) -> None:
     (logs_dir / "reflection_log.json").write_text(json.dumps(reflection_log), encoding="utf-8")
 
 
-def test_pages_render_with_populated_data(tmp_path: Path, monkeypatch) -> None:
+def test_outputs_and_decisions_tabs_render_with_populated_data(tmp_path: Path, monkeypatch) -> None:
     import dashboard.data as data
 
     reports_dir = tmp_path / "reports"
@@ -129,10 +200,11 @@ def test_pages_render_with_populated_data(tmp_path: Path, monkeypatch) -> None:
 
     at = AppTest.from_file(APP_PATH)
     at.run(timeout=30)
-    assert not at.exception
 
-    at.sidebar.radio[0].set_value("AI Reasoning").run(timeout=30)
-    assert not at.exception
+    _goto(at, "Outputs & Decisions")
 
-    at.sidebar.radio[0].set_value("Reports").run(timeout=30)
     assert not at.exception
+    assert len(at.tabs) == 3
+    # The download button on Reports & Scores only appears once a real
+    # report .md file exists on disk, which _write_sample_report provides.
+    assert len(at.get("download_button")) == 1

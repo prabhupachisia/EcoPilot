@@ -18,8 +18,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from config.settings import LOGS_DIR, MODELS_DIR, REPORTS_DIR
+from config.constants import ELECTRICITY_RATE_PER_KWH
+from config.settings import (
+    BASELINE_IDF,
+    LOGS_DIR,
+    MODELS_DIR,
+    REPORTS_DIR,
+    UPLOADED_MODELS_DIR,
+    UPLOADED_WEATHER_DIR,
+    WEATHER_FILE,
+)
 from mcp_server.tools.carbon import CarbonIntensityProfile
+from telemetry.extractor import BuildingStateExtractor
+from telemetry.reader import SQLiteReader
 
 
 def _load_json(path: Path, default: Any) -> Any:
@@ -167,3 +178,72 @@ def estimate_carbon_reduction_kg(
         return None
 
     return baseline_kg - optimized_kg
+
+
+def estimate_cost_savings(
+    baseline_energy_kwh: float | None,
+    optimized_energy_kwh: float | None,
+    rate: float = ELECTRICITY_RATE_PER_KWH,
+) -> float | None:
+    """Approximate $ saved using a representative electricity rate.
+
+    Same shape as estimate_carbon_reduction_kg -- turns "X% energy saved"
+    into a dollar figure, using a flat rate rather than a real tariff feed.
+    """
+
+    if baseline_energy_kwh is None or optimized_energy_kwh is None:
+        return None
+
+    return (baseline_energy_kwh - optimized_energy_kwh) * rate
+
+
+def list_idf_presets(
+    models_dir: Path | None = None,
+    baseline_idf: Path | None = None,
+) -> list[Path]:
+    """Baseline IDF + anything already saved under energyplus/models/ (past
+    optimization cycles, plus anything uploaded through Setup)."""
+
+    models_dir = models_dir or MODELS_DIR
+    baseline_idf = baseline_idf or BASELINE_IDF
+
+    presets = [baseline_idf] if baseline_idf.exists() else []
+
+    if models_dir.exists():
+        presets.extend(sorted(models_dir.glob("*.idf")))
+
+    return presets
+
+
+def list_epw_presets(weather_dir: Path | None = None, baseline_epw: Path | None = None) -> list[Path]:
+    """Baseline weather file + anything uploaded through Setup."""
+
+    baseline_epw = baseline_epw or WEATHER_FILE
+    weather_dir = weather_dir or UPLOADED_WEATHER_DIR
+
+    presets = [baseline_epw] if baseline_epw.exists() else []
+
+    if weather_dir.exists():
+        presets.extend(sorted(weather_dir.glob("*.epw")))
+
+    return presets
+
+
+def save_uploaded_file(uploaded_file: Any, dest_dir: Path) -> Path:
+    """Write a Streamlit UploadedFile's bytes to dest_dir, returning the path."""
+
+    dest_dir = Path(dest_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    destination = dest_dir / uploaded_file.name
+    destination.write_bytes(uploaded_file.getvalue())
+
+    return destination
+
+
+def extract_zone_temperatures(sql_file: Path) -> dict[str, float]:
+    """Fresh per-zone temperature extraction from a just-completed simulation's
+    eplusout.sql -- feeds the Simulation Runner page's building heatmap."""
+
+    with SQLiteReader(sql_file) as reader:
+        return BuildingStateExtractor(reader).extract_zone_temperatures()

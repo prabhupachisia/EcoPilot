@@ -32,6 +32,8 @@ logs/
 # EnergyPlus Outputs
 energyplus/outputs/*
 energyplus/models/*.idf
+energyplus/models/uploaded/
+energyplus/weather/uploaded/
 
 # Generated Reports
 reports/
