@@ -46,3 +46,5 @@ memory/faiss_index/
 build/
 dist/
 *.egg-info/
+
+plan.txt
