@@ -161,3 +161,4 @@ def test_narrative_uses_llm_when_provided() -> None:
     )
 
     assert result.narrative == "Slightly outperformed the prediction."
+    assert "Raised cooling setpoint due to low occupancy." in llm.calls[0]["user_prompt"]

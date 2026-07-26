@@ -29,6 +29,18 @@ PLANNER_TOOLS = [
                     "cooling_c": {"type": "number"},
                     "heating_c": {"type": "number"},
                     "reason": {"type": "string"},
+                    "expected_savings_percent": {
+                        "type": "number",
+                        "description": (
+                            "Your own estimate of the % energy savings this "
+                            "change will produce this cycle (e.g. 3.5 for "
+                            "3.5%). Can be negative if you expect a "
+                            "short-term cost for a longer-term goal. This is "
+                            "compared against the actual measured outcome "
+                            "afterward, so give your real estimate, not a "
+                            "placeholder."
+                        ),
+                    },
                 },
             },
         },
@@ -41,6 +53,7 @@ class PlannerProposal:
     actions: list[BuildingAction]
     rationale: str
     target_hours_for_precool: list[int] = field(default_factory=list)
+    predicted_savings_percent: float = 0.0
 
 
 class Planner:
@@ -72,6 +85,7 @@ class Planner:
         )
 
         actions = self._parse_actions(response.tool_calls)
+        predicted_savings_percent = self._extract_predicted_savings(response.tool_calls)
 
         target_hours = (
             sorted(carbon_profile, key=carbon_profile.get)[:4] if carbon_profile else []
@@ -81,6 +95,7 @@ class Planner:
             actions=actions,
             rationale=response.content,
             target_hours_for_precool=target_hours,
+            predicted_savings_percent=predicted_savings_percent,
         )
 
     def _build_prompt(
@@ -157,6 +172,23 @@ class Planner:
                 )
 
         return actions
+
+    def _extract_predicted_savings(self, tool_calls: list[ToolCall]) -> float:
+        for call in tool_calls:
+            if call.name != "set_hvac_setpoints":
+                continue
+
+            raw_value = call.arguments.get("expected_savings_percent")
+
+            if raw_value is None:
+                continue
+
+            try:
+                return float(raw_value)
+            except (TypeError, ValueError):
+                continue
+
+        return 0.0
 
 
 __all__ = ["Planner", "PlannerProposal", "PLANNER_TOOLS"]

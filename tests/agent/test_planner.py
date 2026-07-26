@@ -41,6 +41,53 @@ def test_propose_parses_set_hvac_setpoints_tool_call_into_actions() -> None:
     assert action.value == 26.0
     assert action.reason == "Low occupancy"
     assert proposal.rationale == response.content
+    assert proposal.predicted_savings_percent == 0.0
+
+
+def test_propose_extracts_expected_savings_percent_from_the_tool_call() -> None:
+    response = LLMResponse(
+        content="Raising cooling setpoint should save about 4%.",
+        tool_calls=[
+            ToolCall(
+                name="set_hvac_setpoints",
+                arguments={"cooling_c": 26.0, "expected_savings_percent": 4.2},
+            )
+        ],
+    )
+    planner, _, _ = make_planner(response)
+
+    proposal = planner.propose(make_building_state(), [], {})
+
+    assert proposal.predicted_savings_percent == 4.2
+
+
+def test_propose_defaults_predicted_savings_to_zero_when_not_given() -> None:
+    response = LLMResponse(
+        content="No estimate provided.",
+        tool_calls=[ToolCall(name="set_hvac_setpoints", arguments={"cooling_c": 26.0})],
+    )
+    planner, _, _ = make_planner(response)
+
+    proposal = planner.propose(make_building_state(), [], {})
+
+    assert proposal.predicted_savings_percent == 0.0
+
+
+def test_propose_ignores_unparsable_expected_savings_percent() -> None:
+    response = LLMResponse(
+        content="Bad value.",
+        tool_calls=[
+            ToolCall(
+                name="set_hvac_setpoints",
+                arguments={"cooling_c": 26.0, "expected_savings_percent": "not-a-number"},
+            )
+        ],
+    )
+    planner, _, _ = make_planner(response)
+
+    proposal = planner.propose(make_building_state(), [], {})
+
+    assert proposal.predicted_savings_percent == 0.0
 
 
 def test_propose_handles_both_setpoints_in_one_call() -> None:

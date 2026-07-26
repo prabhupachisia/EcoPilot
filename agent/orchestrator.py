@@ -167,7 +167,7 @@ def build_cycle_graph(
         result = reflection.reflect(
             cycle=state["cycle"],
             proposal=state["proposal"],
-            predicted_savings_percent=0.0,
+            predicted_savings_percent=state["proposal"].predicted_savings_percent,
             evaluation=state["evaluation"],
             state=state["current_state"],
             carbon_intensity_at_decision=_first_carbon_intensity(state["carbon_profile"]),

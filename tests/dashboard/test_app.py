@@ -110,6 +110,87 @@ def test_closed_loop_runner_dry_run_completes_and_shows_agent_console(
     assert len(reports) == 1
 
 
+def test_closed_loop_runner_chat_console_persists_after_navigating_away(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Regression test: the Agent Console used to only render inside the
+    button-click script run, so switching pages and coming back (or any
+    other rerun) made it disappear even though the run had completed
+    successfully. It should now be replayed from session_state."""
+
+    import agent.run_logs as run_logs
+    import mcp_server.tools.reports as reports_module
+
+    monkeypatch.setattr(run_logs, "LOGS_DIR", tmp_path / "logs")
+    monkeypatch.setattr(reports_module, "REPORTS_DIR", tmp_path / "reports")
+
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=30)
+
+    _goto(at, "Closed-Loop Runner")
+    at.checkbox[0].set_value(False).run(timeout=30)
+    at.number_input[0].set_value(1).run(timeout=30)
+    at.button[0].click().run(timeout=60)
+
+    assert not at.exception
+    assert len(at.chat_message) == 5
+
+    _goto(at, "Overview")
+    assert not at.exception
+
+    _goto(at, "Closed-Loop Runner")
+    assert not at.exception
+    assert len(at.chat_message) == 5
+
+
+def test_setup_page_clear_experience_memory_button(tmp_path: Path, monkeypatch) -> None:
+    _point_at_empty_dirs(monkeypatch, tmp_path)
+
+    import config.settings as settings
+    from agent.memory import Experience, ExperienceStore
+
+    # AppTest re-executes dashboard/app.py from scratch on every rerun (that's
+    # exactly the real Streamlit behavior the chat-console fix above relies
+    # on), so app.py's own `from config.settings import EXPERIENCE_MEMORY_PATH`
+    # re-reads this module attribute fresh each time -- patching it here is
+    # what actually reaches the page, unlike patching an already-imported
+    # `dashboard.app` module object.
+    memory_path = tmp_path / "experiences.json"
+    monkeypatch.setattr(settings, "EXPERIENCE_MEMORY_PATH", memory_path)
+
+    store = ExperienceStore(path=memory_path)
+    store.store(
+        Experience(
+            cycle=1,
+            weather_outdoor_temp=30.0,
+            occupancy=10.0,
+            cooling_setpoint=24.0,
+            heating_setpoint=20.0,
+            carbon_intensity=0.3,
+            energy_kwh=100.0,
+            savings_percent=5.0,
+            action_summary="test",
+        )
+    )
+    assert store.count == 1
+
+    at = AppTest.from_file(APP_PATH)
+    at.run(timeout=30)
+    _goto(at, "Setup")
+
+    assert any("1 past optimization cycle" in caption.value for caption in at.caption)
+
+    clear_button = next(b for b in at.button if "Clear experience memory" in b.label)
+    clear_button.click().run(timeout=30)
+
+    confirm_button = next(b for b in at.button if b.label == "Yes, clear memory")
+    confirm_button.click().run(timeout=30)
+
+    assert not at.exception
+    assert ExperienceStore(path=memory_path).count == 0
+    assert any("cleared" in success.value.lower() for success in at.success)
+
+
 def _write_sample_report(reports_dir: Path) -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
     payload = {

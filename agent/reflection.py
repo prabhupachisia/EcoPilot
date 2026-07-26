@@ -74,6 +74,7 @@ class Reflection:
 
         if self.llm is not None:
             prompt = (
+                f"Planner's reasoning for this cycle: {proposal.rationale}\n\n"
                 f"Predicted savings: {predicted_savings_percent:.2f}%\n"
                 f"Actual savings: {actual_savings_percent:.2f}%\n"
                 f"Confidence: {confidence:.2f}\n"

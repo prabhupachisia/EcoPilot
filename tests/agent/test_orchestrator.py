@@ -249,6 +249,50 @@ def test_regression_triggers_rollback(tmp_path: Path) -> None:
     assert ("restore_snapshot", {"name": "baseline"}) in tools.calls
 
 
+def test_reflection_confidence_uses_planners_own_predicted_savings(tmp_path: Path) -> None:
+    """Regression test: predicted_savings_percent used to be hardcoded to
+    0.0 in the reflect node regardless of what the Planner actually said,
+    which made the confidence score meaningless. It should now be computed
+    against the Planner's own expected_savings_percent tool-call argument.
+    """
+
+    evaluation = make_evaluation(passed=True, overall_score=90.0, savings_percent=5.0)
+    tools = make_tools(evaluation)
+    memory = ExperienceStore(path=tmp_path / "experiences.json")
+
+    llm = FakeLLMClient(
+        responses=[
+            LLMResponse(
+                content="Raising cooling setpoint should save about 5%.",
+                tool_calls=[
+                    ToolCall(
+                        name="set_hvac_setpoints",
+                        arguments={"cooling_c": 25.0, "expected_savings_percent": 5.0},
+                    )
+                ],
+            ),
+            LLMResponse(content="Energy fell because occupancy dropped."),
+            LLMResponse(content="Prediction matched the actual outcome."),
+        ]
+    )
+
+    graph = build_cycle_graph(llm=llm, tools=tools, memory=memory, safety=SafetySupervisor())
+
+    result = graph.invoke(
+        {
+            "cycle": 1,
+            "max_cycles": 5,
+            "metadata": make_metadata(),
+            "baseline_state": make_building_state(average_occupancy=40.0),
+            "current_state": make_building_state(average_occupancy=40.0),
+            "previous_score": None,
+        }
+    )
+
+    assert result["proposal"].predicted_savings_percent == 5.0
+    assert result["reflection"].confidence == 1.0
+
+
 def test_no_rollback_when_regression_within_threshold(tmp_path: Path) -> None:
     evaluation = make_evaluation(passed=True, overall_score=85.0)
     tools = make_tools(evaluation)

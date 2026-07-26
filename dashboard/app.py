@@ -30,11 +30,13 @@ import streamlit as st
 
 from agent.dry_run import build_dry_run_environment
 from agent.environment import build_live_environment
+from agent.memory import ExperienceStore
 from agent.orchestrator import build_cycle_graph, run_optimization_loop
 from agent.run_logs import write_audit_trail, write_decision_and_reflection_logs
 from config.settings import (
     BASELINE_IDF,
     ENERGYPLUS_EXE,
+    EXPERIENCE_MEMORY_PATH,
     MODELS_DIR,
     OLLAMA_BASE_URL,
     OUTPUT_DIR,
@@ -285,6 +287,35 @@ def render_setup() -> None:
                 "(non-dry-run) closed-loop runs."
             )
 
+    st.divider()
+    st.subheader("Experience memory")
+
+    memory_count = ExperienceStore(path=EXPERIENCE_MEMORY_PATH).count
+    st.caption(
+        f"{memory_count} past optimization cycle(s) stored. The Planner retrieves "
+        "similar past cycles from this memory on every run -- clear it to start "
+        "a demo from a blank slate."
+    )
+
+    if st.session_state.get("confirm_clear_memory"):
+        st.warning("This permanently deletes all stored experience memory.")
+        confirm_col, cancel_col = st.columns(2)
+
+        if confirm_col.button("Yes, clear memory", type="primary"):
+            store = ExperienceStore(path=EXPERIENCE_MEMORY_PATH)
+            store.clear()
+            store.save()
+            st.session_state["confirm_clear_memory"] = False
+            st.success("Experience memory cleared.")
+            st.rerun()
+
+        if cancel_col.button("Cancel"):
+            st.session_state["confirm_clear_memory"] = False
+            st.rerun()
+    elif st.button("🗑️ Clear experience memory", disabled=memory_count == 0):
+        st.session_state["confirm_clear_memory"] = True
+        st.rerun()
+
 
 # ----------------------------------------------------------------------
 # Simulation Runner
@@ -410,6 +441,14 @@ def _agent_message(container, speaker: str, text: str) -> None:
         )
 
 
+def _render_chat_transcript(container, transcript: list[tuple[str, str]]) -> None:
+    for speaker, text in transcript:
+        if speaker == "_cycle_header":
+            container.markdown(f"**{text}**")
+        else:
+            _agent_message(container, speaker, text)
+
+
 def render_closed_loop_runner() -> None:
     st.header("Closed-Loop Runner")
 
@@ -430,14 +469,29 @@ def render_closed_loop_runner() -> None:
     if not dry_run:
         st.caption(f"Live mode using `{idf_path.name}` + `{weather_path.name}` — change on Setup.")
 
+    st.subheader("🗣️ Agent Console")
+    console = st.container(border=True)
+
     if st.button("▶️ Start Closed Loop", type="primary"):
-        console = st.container(border=True)
-        console.subheader("🗣️ Agent Console")
+        # Reset and rebuild the transcript in session_state as the run
+        # progresses, rather than only drawing into `console` directly --
+        # otherwise the console goes blank the moment Streamlit reruns the
+        # script for any reason (switching pages and back, a long live run
+        # reconnecting), since a plain st.container() draws nothing on its
+        # own once the script that created it has finished.
+        st.session_state["chat_transcript"] = []
+        transcript = st.session_state["chat_transcript"]
+
+        def log(speaker: str, text: str) -> None:
+            transcript.append((speaker, text))
+            _agent_message(console, speaker, text)
 
         def on_cycle(cycle: int, result: dict) -> None:
-            console.markdown(f"**— Cycle {cycle} —**")
+            header = f"— Cycle {cycle} —"
+            transcript.append(("_cycle_header", header))
+            console.markdown(f"**{header}**")
 
-            _agent_message(console, "Planner", result["proposal"].rationale)
+            log("Planner", result["proposal"].rationale)
             if demo_pacing:
                 time.sleep(0.4)
 
@@ -445,33 +499,30 @@ def render_closed_loop_runner() -> None:
                 verdict_emoji = {"accept": "✅", "clipped": "✂️", "rejected": "🚫"}.get(
                     decision.verdict.value, ""
                 )
-                _agent_message(
-                    console,
+                log(
                     "Safety Supervisor",
                     f"{verdict_emoji} `{decision.action.parameter}` — {decision.reason}",
                 )
             if demo_pacing:
                 time.sleep(0.3)
 
-            _agent_message(console, "Controller", result["controller_result"].message)
+            log("Controller", result["controller_result"].message)
             if demo_pacing:
                 time.sleep(0.3)
 
-            _agent_message(console, "Analyst", result["analyst_report"].narrative)
+            log("Analyst", result["analyst_report"].narrative)
             if demo_pacing:
                 time.sleep(0.3)
 
             reflection = result["reflection"]
             narrative = reflection.narrative or "No narrative generated for this cycle."
-            _agent_message(
-                console,
+            log(
                 "Reflection",
                 f"Confidence **{reflection.confidence:.2f}**. {narrative}",
             )
 
             if reflection.should_rollback:
-                _agent_message(
-                    console,
+                log(
                     "Safety Supervisor",
                     "⚠️ This cycle regressed enough to trigger an automatic rollback.",
                 )
@@ -529,6 +580,11 @@ def render_closed_loop_runner() -> None:
             f"Done — {len(history)} cycle(s) completed. See **Outputs & Decisions** "
             "for the full breakdown."
         )
+    elif st.session_state.get("chat_transcript"):
+        # Not the run itself (button wasn't just clicked this script run) --
+        # redraw whatever the last run produced so the console survives
+        # page switches and reruns instead of just going blank.
+        _render_chat_transcript(console, st.session_state["chat_transcript"])
 
     if "last_run_history" in st.session_state and st.session_state["last_run_history"]:
         history = st.session_state["last_run_history"]

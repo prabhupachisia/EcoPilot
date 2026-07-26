@@ -30,3 +30,15 @@ def test_analyst_prompt_forbids_proposing_actions() -> None:
 
 def test_reflection_prompt_defers_confidence_computation() -> None:
     assert "deterministically" in REFLECTION_SYSTEM_PROMPT.lower()
+
+
+def test_planner_prompt_says_to_widen_not_narrow_the_deadband() -> None:
+    assert "widen" in PLANNER_SYSTEM_PROMPT.lower()
+
+
+def test_planner_prompt_asks_for_a_real_savings_estimate() -> None:
+    assert "expected_savings_percent" in PLANNER_SYSTEM_PROMPT
+
+
+def test_reflection_prompt_forbids_inventing_ungrounded_causes() -> None:
+    assert "invent" in REFLECTION_SYSTEM_PROMPT.lower()

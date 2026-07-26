@@ -115,6 +115,12 @@ def build_dry_run_llm(max_cycles: int) -> FakeLLMClient:
     responses: list[LLMResponse] = []
 
     for cycle in range(1, max_cycles + 1):
+        # _make_state() below produces savings of 4% * cycle, so predicting
+        # a shade under that (rather than a suspiciously perfect match)
+        # shows a believable, well-but-not-perfectly-calibrated confidence
+        # score, the same way a real Planner call would.
+        predicted_savings = max(0.0, 4.0 * cycle - 1.0)
+
         responses.append(
             LLMResponse(
                 content=(
@@ -125,7 +131,11 @@ def build_dry_run_llm(max_cycles: int) -> FakeLLMClient:
                 tool_calls=[
                     ToolCall(
                         name="set_hvac_setpoints",
-                        arguments={"cooling_c": 24.0 + cycle * 0.3, "reason": "Lower occupancy"},
+                        arguments={
+                            "cooling_c": 24.0 + cycle * 0.3,
+                            "reason": "Lower occupancy",
+                            "expected_savings_percent": predicted_savings,
+                        },
                     )
                 ],
             )
