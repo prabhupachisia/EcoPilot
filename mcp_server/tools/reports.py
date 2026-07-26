@@ -5,6 +5,7 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from evaluation import EvaluationRecommendation
 
 from fastmcp import FastMCP
 
@@ -17,7 +18,11 @@ if TYPE_CHECKING:
 
 def _evaluation_to_dict(result: EvaluationResult) -> dict[str, Any]:
     data = asdict(result)
-    data["recommendation"] = result.recommendation.value
+    data["recommendation"] = (
+    result.recommendation.value
+    if isinstance(result.recommendation, EvaluationRecommendation)
+    else result.recommendation
+)
     return data
 
 
