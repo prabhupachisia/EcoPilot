@@ -7,7 +7,22 @@ from streamlit.testing.v1 import AppTest
 APP_PATH = str(Path(__file__).parent.parent.parent / "dashboard" / "app.py")
 
 
-def test_overview_renders_empty_state_with_no_data() -> None:
+def _point_at_empty_dirs(monkeypatch, tmp_path: Path) -> None:
+    """Isolate a test from whatever real logs/reports/models happen to
+    exist in the actual project directories (e.g. from a developer's own
+    earlier `python main.py` run) -- these tests want a guaranteed-empty
+    state, not "whatever's on disk right now"."""
+
+    import dashboard.data as data
+
+    monkeypatch.setattr(data, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr(data, "LOGS_DIR", tmp_path / "logs")
+    monkeypatch.setattr(data, "MODELS_DIR", tmp_path / "models")
+
+
+def test_overview_renders_empty_state_with_no_data(tmp_path: Path, monkeypatch) -> None:
+    _point_at_empty_dirs(monkeypatch, tmp_path)
+
     at = AppTest.from_file(APP_PATH)
     at.run(timeout=30)
 
@@ -16,7 +31,9 @@ def test_overview_renders_empty_state_with_no_data() -> None:
 
 
 @pytest.mark.parametrize("page_label", ["AI Reasoning", "Audit Trail", "Reports"])
-def test_each_page_renders_without_exception(page_label: str) -> None:
+def test_each_page_renders_without_exception(page_label: str, tmp_path: Path, monkeypatch) -> None:
+    _point_at_empty_dirs(monkeypatch, tmp_path)
+
     at = AppTest.from_file(APP_PATH)
     at.run(timeout=30)
 

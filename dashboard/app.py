@@ -10,7 +10,15 @@ Run with: streamlit run dashboard/app.py
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
+
+# `streamlit run` puts this file's own directory on sys.path, not the
+# project root, so plain "config.settings"/"dashboard.data" imports fail
+# unless we add the root ourselves first.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import plotly.graph_objects as go
 import streamlit as st
