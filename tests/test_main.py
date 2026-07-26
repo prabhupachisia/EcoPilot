@@ -19,6 +19,12 @@ def test_dry_run_completes_and_writes_logs_and_report(tmp_path: Path, monkeypatc
     assert len(decision_log) >= 1
     assert len(reflection_log) >= 1
     assert reflection_log[0]["confidence"] is not None
+    assert "thought" in decision_log[0]
+    assert "retrieved_memory" in decision_log[0]
+    assert "safety_decisions" in decision_log[0]
+
+    # --dry-run has no real BuildingManager, so no audit trail is written.
+    assert not (tmp_path / "logs" / "audit_trail.json").exists()
 
     reports = list((tmp_path / "reports").glob("*.md"))
     assert len(reports) == 1
